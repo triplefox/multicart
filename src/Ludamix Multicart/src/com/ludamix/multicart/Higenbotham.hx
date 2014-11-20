@@ -63,6 +63,7 @@ class Higenbotham implements MulticartGame
 			}
 			else
 			{
+				// TODO: service occurs on the side that wins!
 				/* ball ready for service */ b.p.x = BX; b.p.y = BY; b.v.x = 0.; b.v.y = 0.;
 				b.v.x = Math.random() * 10 - 5; b.live = true;
 			}
