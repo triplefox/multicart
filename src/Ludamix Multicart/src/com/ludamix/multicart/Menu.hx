@@ -3,10 +3,7 @@ package com.ludamix.multicart;
 class Menu implements MulticartGame
 {
 	
-	public function new()
-	{
-		
-	}
+	public function new(){}
 	
 	public function start()
 	{
