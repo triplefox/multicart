@@ -19,12 +19,18 @@ class Main extends Sprite
 		inp = new InputConfig(); 
 		Lib.current.stage.addEventListener(KeyboardEvent.KEY_DOWN, inp.onKeyDown);
 		Lib.current.stage.addEventListener(KeyboardEvent.KEY_UP, inp.onKeyUp);
-		inp.kbutton(37,"left"); inp.kincv(37,"horiz", -0.1);
-		inp.kbutton(39,"right"); inp.kincv(39,"horiz", 0.1);
-		inp.kbutton(38,"up"); inp.kincv(38,"vert", -0.1);
-		inp.kbutton(40,"down"); inp.kincv(40,"vert", 0.1);
-		inp.kbutton(65,"p1b1"); // A
-		inp.kbutton(76,"p2b1"); // L
+		/* p1: WASD */
+		inp.kbutton(65,"p1left"); inp.kincv(65,"p1horiz", -0.1);
+		inp.kbutton(68,"p1right"); inp.kincv(68,"p1horiz", 0.1);
+		inp.kbutton(87,"p1up"); inp.kincv(87,"p1vert", -0.1);
+		inp.kbutton(83,"p1down"); inp.kincv(83,"p1vert", 0.1);
+		inp.kbutton(70,"p1b1"); // F
+		/* p2: arrows */
+		inp.kbutton(37,"p2left"); inp.kincv(37,"p2horiz", -0.1);
+		inp.kbutton(39,"p2right"); inp.kincv(39,"p2horiz", 0.1);
+		inp.kbutton(38,"p2up"); inp.kincv(38,"p2vert", -0.1);
+		inp.kbutton(40,"p2down"); inp.kincv(40,"p2vert", 0.1);
+		inp.kbutton(186,"p2b1"); // ;
 		/* quit to menu on "escape" key */
 		Lib.current.stage.addEventListener(KeyboardEvent.KEY_DOWN, function(k : KeyboardEvent) { 
 			if (k.keyCode == 27) startGame(new Menu()); } );

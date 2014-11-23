@@ -47,7 +47,12 @@ class KeyMapping
 	public function up(t : Tuner) { if (held) doKey(t, tu, iu); held = false; }
 	
 	/* conveniences */
-	public static function bool(c : Int, m : String) 
+	public static function btap(c : Int, m : String) 
+	{ var k = new KeyMapping(); k.c = c; 
+		k.td = KeyBool; k.th = KeyNull; k.tu = KeyBool; 
+		k.id = true; k.ih = null; k.iu = false; 
+		k.imd = m; k.imh = m; k.imu = m; return k; }
+	public static function bhold(c : Int, m : String) 
 	{ var k = new KeyMapping(); k.c = c; 
 		k.td = KeyBool; k.th = KeyBool; k.tu = KeyBool; 
 		k.id = true; k.ih = true; k.iu = false; 
