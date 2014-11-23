@@ -7,7 +7,7 @@ enum KeyType
 	KeyIntIncrement;
 	KeyIntSet;
 	KeyBool;
-	KeyLambda;
+	KeyLambda; /* Tuner->KeyMapping->TunerType<T> */
 	KeyNull;
 }
 
@@ -42,7 +42,7 @@ class KeyMapping
 		}
 	}
 	
-	public function down(t : Tuner) { if (!held) doKey(t, td, id); held = true; }
+	public function down(t : Tuner) { if (!held) { doKey(t, td, id); } held = true; }
 	public function hold(t : Tuner) { doKey(t, th, ih); }
 	public function up(t : Tuner) { if (held) doKey(t, tu, iu); held = false; }
 	

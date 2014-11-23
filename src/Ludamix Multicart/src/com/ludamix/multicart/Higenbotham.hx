@@ -115,6 +115,7 @@ class Higenbotham implements MulticartGame
 					b.p.x = BXR; b.p.y = BY; b.v.x = 0.; b.v.y = 0.; hp = HITPOW;
 					if (hitR) { ball.v.setfmul(vecR, hp); hitSound(1); b.s = Play(true); }
 			}
+			hitL = false; hitR = false;
 		}
 		{ /* render */
 			/* common parameters */
