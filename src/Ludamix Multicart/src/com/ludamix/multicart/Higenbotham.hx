@@ -67,8 +67,8 @@ class Higenbotham implements MulticartGame
 		{ /* configure input */ this.inp = inp;
 			inp.tfloat(ball.v, "x", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "t0", "Ball X Vel", false);
 			inp.tfloat(ball.v, "y", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "t1", "Ball Y Vel", false);
-			inp.tfloat(this, "angleL", RangeMapping.neg( -Math.PI / 2, Math.PI / 2, 1., 0.), 0., "p1horiz", "Player 1 Angle", true);
-			inp.tfloat(this, "angleR", RangeMapping.neg( -Math.PI * 3 / 2, -Math.PI / 2, 1., 0.), 0., "p2horiz", "Player 2 Angle", true);
+			inp.tfloat(this, "angleL", RangeMapping.neg( -Math.PI / 2 + 0.03, Math.PI / 2 - 0.03, 1., 0.), 0., "p1horiz", "Player 1 Angle", true);
+			inp.tfloat(this, "angleR", RangeMapping.neg( -Math.PI * 3 / 2 + 0.03, -Math.PI / 2 - 0.03, 1., 0.), 0., "p2horiz", "Player 2 Angle", true);
 			inp.tbool(this, "hitL", false, "p1b1tap", "Player 1 Hit Ball");
 			inp.tbool(this, "hitR", false, "p2b1tap", "Player 2 Hit Ball");
 		}
@@ -96,7 +96,10 @@ class Higenbotham implements MulticartGame
 				case Play(left_side):
 					/* gravity */ b.v.y += GRAVITY;
 					/* bounce floor */ if (b.p.y + b.v.y > PH - 1) 
-					{ b.v.y = -b.v.y; if (Math.abs(b.v.y)<=GRAVITY) /* clamp to dead zone */ { b.v.y = 0.; } }
+					{ /* push in then reverse */ b.p.y += b.v.y; b.v.y = -b.v.y; if (b.p.y + b.v.y > PH - 1) /* clamp if needed */ b.p.y = (PH - 1) - b.v.y;
+					  if (Math.abs(b.v.y) <= GRAVITY) /* clamp to dead zone */ { b.v.y = 0.; } }
+					/* bounce ceiling */ if (b.p.y + b.v.y < 0)
+					{ /* push in then reverse */ b.p.y += b.v.y; b.v.y = -b.v.y; if (b.p.y + b.v.y < 0) /* clamp if needed */ 0 - b.v.y; }
 					/* bounce net */ { var start = b.p.x < PW / 2; var end = b.p.x + b.v.x < PW / 2; 
 						if (b.p.y + b.v.y > (PH - NH) - 1 && (start != end)) { b.v.x = -b.v.x; }
 					}
