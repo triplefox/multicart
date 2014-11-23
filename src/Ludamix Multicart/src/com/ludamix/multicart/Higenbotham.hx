@@ -27,6 +27,8 @@ import com.ludamix.multicart.d.Vec2F;
 	
 */
 
+enum BallState { Play; ServeL; ServeR; }
+
 class Higenbotham implements MulticartGame
 {
 	
@@ -35,19 +37,20 @@ class Higenbotham implements MulticartGame
 	public var inp /* input config and state */ : InputConfig;
 	public var disp /* main display */ : Sprite;
 	public var pfs /* playfield sprite */ : Sprite;
-	public var ball : {v /*velocity*/ :Vec2F, p /*position*/ :Vec2F, live :Bool};
+	public var ball : {v /*velocity*/ :Vec2F, p /*position*/ :Vec2F, s : BallState};
 	public static inline var PW /* playfield width */ = 150;
 	public static inline var PH /* playfield height */ = 100;
 	public static inline var NH /* net height (top y = PH-NH) */ = 20;
 	public static inline var GRAVITY /* added to ball y per frame */ = 0.1;
-	public static inline var BX /* ball init x */ = PW * 0.8;
+	public static inline var BXR /* ball init x right */ = PW * 0.8;
+	public static inline var BXL /* ball init x left */ = PW * 0.2;
 	public static inline var BY /* ball init y */ = PH * 0.5;
 	
 	public function start(inp : InputConfig)
 	{
 		{ /* init display */ disp = new Sprite(); Lib.current.stage.addChild(disp); }
 		{ /* init playfield */ pfs = new Sprite(); disp.addChild(pfs); }
-		{ /* init ball */ ball = { p:Vec2F.c(PW * 0.8, PH * 0.5), v:Vec2F.c(0., 0.), live:false }; }
+		{ /* init ball */ ball = { p:Vec2F.c(PW * 0.8, PH * 0.5), v:Vec2F.c(0., 0.), s:ServeR }; }
 		{ /* configure input */ this.inp = inp;
 			inp.tfloat(ball.v, "x", RangeMapping.neg( -2, 2, 1., 0.), 0., "horiz", "Ball X Vel");  
 			inp.tfloat(ball.v, "y", RangeMapping.neg( -2, 2, 1., 0.), 0., "vert", "Ball Y Vel");  
@@ -60,20 +63,21 @@ class Higenbotham implements MulticartGame
 		{ /* update inputs */ inp.refresh("horiz"); inp.refresh("vert"); inp.poll(); }
 		{ /* simulate */
 			var b = ball;
-			if (b.live)
+			switch(b.s)
 			{
-				/* gravity */ b.v.y += GRAVITY;
-				/* bounce */ if (b.p.y + b.v.y > PH - 1) 
-				{ b.v.y = -b.v.y * 0.5; if (Math.abs(b.v.y)<=GRAVITY) /* clamp to dead zone */ { b.v.y = 0.; } }
-				/* apply motion (euler integration) */ b.p.x += b.v.x; b.p.y += b.v.y;
-				if (b.p.x > PW) { b.live = false; }
-				if (b.p.x < 0) { b.live = false; }
-			}
-			else
-			{
-				// TODO: service occurs on the side that wins!
-				/* ball ready for service */ b.p.x = BX; b.p.y = BY; b.v.x = 0.; b.v.y = 0.;
-				b.v.x = Math.random() * 10 - 5; b.live = true;
+				case Play:
+					/* gravity */ b.v.y += GRAVITY;
+					/* bounce */ if (b.p.y + b.v.y > PH - 1) 
+					{ b.v.y = -b.v.y * 0.5; if (Math.abs(b.v.y)<=GRAVITY) /* clamp to dead zone */ { b.v.y = 0.; } }
+					/* apply motion (euler integration) */ b.p.x += b.v.x; b.p.y += b.v.y;
+					if (b.p.x > PW) { b.s = ServeL; }
+					if (b.p.x < 0) { b.s = ServeR; }
+				case ServeR:
+					b.p.x = BXR; b.p.y = BY; b.v.x = 0.; b.v.y = 0.;
+					b.v.x = Math.random() * 10 - 5; b.s = Play;
+				case ServeL:
+					b.p.x = BXL; b.p.y = BY; b.v.x = 0.; b.v.y = 0.;
+					b.v.x = Math.random() * 10 - 5; b.s = Play;
 			}
 		}
 		{ /* render */
