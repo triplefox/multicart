@@ -1,5 +1,6 @@
 package com.ludamix.multicart;
 
+import com.ludamix.multicart.d.Beeper;
 import flash.display.Sprite;
 import flash.events.Event;
 import flash.Lib;
@@ -34,6 +35,8 @@ class Main extends Sprite
 		/* quit to menu on "escape" key */
 		Lib.current.stage.addEventListener(KeyboardEvent.KEY_DOWN, function(k : KeyboardEvent) { 
 			if (k.keyCode == 27) startGame(new Menu()); } );
+		/* audio */
+		beeper = new Beeper();
 		/* default game */
 		startGame(new Higenbotham());
 	}
@@ -57,6 +60,7 @@ class Main extends Sprite
 	
 	public static var game:Dynamic;
 	public static var inp:InputConfig;
+	public static var beeper:Beeper;
 	
 	public static function startGame(newgame : Dynamic)
 	{

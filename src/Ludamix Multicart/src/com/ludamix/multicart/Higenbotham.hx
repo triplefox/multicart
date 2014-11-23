@@ -1,7 +1,9 @@
 package com.ludamix.multicart;
+import com.ludamix.multicart.d.Beeper;
 import com.ludamix.multicart.d.InputConfig;
 import com.ludamix.multicart.d.Proportion;
 import com.ludamix.multicart.d.RangeMapping;
+import haxe.ds.Vector;
 import openfl.display.Sprite;
 import openfl.events.Event;
 import openfl.geom.Rectangle;
@@ -27,7 +29,7 @@ import com.ludamix.multicart.d.Vec2F;
 	
 */
 
-enum BallState { Play(left_side : Bool); ServeL; ServeR; }
+enum BallState { Play(left_side /* ball possession variable */ : Bool); ServeL; ServeR; }
 
 class Higenbotham implements MulticartGame
 {
@@ -42,6 +44,8 @@ class Higenbotham implements MulticartGame
 	public var hitL : Bool; public var hitR : Bool; /* player hits */
 	public var vecL : Vec2F;  public var vecR : Vec2F; /* player displayed angles */
 	public var hp : Float; /* hit power of volley */
+	public var beep_gain : Vector<Float>; /* beeper gain */
+	public var beep_freq : Array<Vector<Float>>; /* beeper freq */
 	public static inline var PW /* playfield width */ = 150;
 	public static inline var PH /* playfield height */ = 100;
 	public static inline var NH /* net height (top y = PH-NH) */ = 20;
@@ -51,6 +55,8 @@ class Higenbotham implements MulticartGame
 	public static inline var BY /* ball init y */ = PH * 0.5;
 	public static inline var HITPOW /* base hit power */ = 2.5;
 	public static inline var HITINC /* add to hit power each hit */ = 0.1;
+	public static inline var UIRAD /* player display radius */ = 32.;
+	public static inline var UIRAD2 /* player display inner radius (circle) */ = 16.;
 	
 	public function start(inp : InputConfig)
 	{
@@ -66,8 +72,14 @@ class Higenbotham implements MulticartGame
 			inp.tbool(this, "hitL", false, "p1b1tap", "Player 1 Hit Ball");
 			inp.tbool(this, "hitR", false, "p2b1tap", "Player 2 Hit Ball");
 		}
+		{ /* start audio */ Main.beeper.start(); 
+			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440.]), Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 220.])];
+			beep_gain = Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) if (i < Beeper.CK_SIZE / 4) 1. -i / (Beeper.CK_SIZE / 4) else 0.]); 
+		}
 		{ /* start loop */ Lib.current.stage.addEventListener(Event.ENTER_FRAME, frame); }
 	}
+	
+	public function hitSound(idx : Int) { Main.beeper.qg = [beep_gain]; Main.beeper.qf = [beep_freq[idx]]; }
 	
 	public function frame(ev : Event)
 	{
@@ -89,16 +101,16 @@ class Higenbotham implements MulticartGame
 						if (b.p.y + b.v.y > (PH - NH) - 1 && (start != end)) { b.v.x = -b.v.x; }
 					}
 					/* apply motion (euler integration) */ b.p.x += b.v.x; b.p.y += b.v.y;
-					if (hitL && b.p.x <= PW / 2 && left_side) { ball.v.setfmul(vecL, hp); hp += HITINC; b.s = Play(false); }
-					if (hitR && b.p.x >= PW / 2 && !left_side) { ball.v.setfmul(vecR, hp); hp += HITINC; b.s = Play(true); }
+					if (hitL && b.p.x <= PW / 2 && left_side) { ball.v.setfmul(vecL, hp); hp += HITINC; b.s = Play(false); hitSound(0); }
+					if (hitR && b.p.x >= PW / 2 && !left_side) { ball.v.setfmul(vecR, hp); hp += HITINC; b.s = Play(true); hitSound(1); }
 					if (b.p.x > PW) { b.s = ServeL; }
 					if (b.p.x < 0) { b.s = ServeR; }
-				case ServeR:
-					b.p.x = BXR; b.p.y = BY; b.v.x = 0.; b.v.y = 0.; hp = HITPOW;
-					if (hitR) { ball.v.setfmul(vecR, hp);  b.s = Play(false); }
 				case ServeL:
 					b.p.x = BXL; b.p.y = BY; b.v.x = 0.; b.v.y = 0.; hp = HITPOW;
-					if (hitL) { ball.v.setfmul(vecL, hp); b.s = Play(true); }
+					if (hitL) { ball.v.setfmul(vecL, hp); hitSound(0); b.s = Play(false); }
+				case ServeR:
+					b.p.x = BXR; b.p.y = BY; b.v.x = 0.; b.v.y = 0.; hp = HITPOW;
+					if (hitR) { ball.v.setfmul(vecR, hp); hitSound(1); b.s = Play(true); }
 			}
 		}
 		{ /* render */
@@ -123,7 +135,7 @@ class Higenbotham implements MulticartGame
 			{ /* draw the player input */
 				var g = disp.graphics; 
 				g.lineStyle(2, 0xFFFFFFFF, 1.); 
-				var r /* radius */ = 16.; var ri /* inner radius */ = 8.; var xL = r; var xR = Lib.current.stage.stageWidth - r;
+				var r = UIRAD; var ri = UIRAD2; var xL = r; var xR = Lib.current.stage.stageWidth - r;
 				/* left */ g.drawCircle(xL, r, ri);  g.moveTo(xL, r); g.lineTo(xL + r * vecL.x, r + r * vecL.y);
 				/* right */ g.drawCircle(xR, r, ri); g.moveTo(xR, r); g.lineTo(xR + r * vecR.x, r + r * vecR.y);
 			}
@@ -133,6 +145,7 @@ class Higenbotham implements MulticartGame
 	public function exit()
 	{
 		/* remove display */ Lib.current.stage.removeChild(disp);
+		/* stop audio */ Main.beeper.stop();
 		/* end loop */ Lib.current.stage.removeEventListener(Event.ENTER_FRAME, frame);
 	}
 	
