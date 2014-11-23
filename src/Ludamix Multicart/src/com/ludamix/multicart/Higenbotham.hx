@@ -1,5 +1,7 @@
 package com.ludamix.multicart;
+import com.ludamix.multicart.d.InputConfig;
 import com.ludamix.multicart.d.Proportion;
+import com.ludamix.multicart.d.RangeMapping;
 import openfl.display.Sprite;
 import openfl.events.Event;
 import openfl.geom.Rectangle;
@@ -30,6 +32,7 @@ class Higenbotham implements MulticartGame
 	
 	public function new(){}
 	
+	public var inp /* input config and state */ : InputConfig;
 	public var disp /* main display */ : Sprite;
 	public var pfs /* playfield sprite */ : Sprite;
 	public var ball : {v /*velocity*/ :Vec2F, p /*position*/ :Vec2F, live :Bool};
@@ -40,16 +43,21 @@ class Higenbotham implements MulticartGame
 	public static inline var BX /* ball init x */ = PW * 0.8;
 	public static inline var BY /* ball init y */ = PH * 0.5;
 	
-	public function start()
+	public function start(inp : InputConfig)
 	{
 		{ /* init display */ disp = new Sprite(); Lib.current.stage.addChild(disp); }
 		{ /* init playfield */ pfs = new Sprite(); disp.addChild(pfs); }
 		{ /* init ball */ ball = { p:Vec2F.c(PW * 0.8, PH * 0.5), v:Vec2F.c(0., 0.), live:false }; }
+		{ /* configure input */ this.inp = inp;
+			inp.tfloat(ball.v, "x", RangeMapping.neg( -2, 2, 1., 0.), 0., "horiz", "Ball X Vel");  
+			inp.tfloat(ball.v, "y", RangeMapping.neg( -2, 2, 1., 0.), 0., "vert", "Ball Y Vel");  
+		}			
 		{ /* start loop */ Lib.current.stage.addEventListener(Event.ENTER_FRAME, frame); }
 	}
 	
 	public function frame(ev : Event)
 	{
+		{ /* update inputs */ inp.refresh("horiz"); inp.refresh("vert"); inp.poll(); }
 		{ /* simulate */
 			var b = ball;
 			if (b.live)

@@ -1,11 +1,12 @@
 package com.ludamix.multicart;
+import com.ludamix.multicart.d.InputConfig;
 
 class Menu implements MulticartGame
 {
 	
 	public function new(){}
 	
-	public function start()
+	public function start(inp : InputConfig)
 	{
 		trace("start");
 	}
