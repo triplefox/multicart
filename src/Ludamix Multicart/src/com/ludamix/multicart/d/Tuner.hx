@@ -2,8 +2,8 @@ package com.ludamix.multicart.d;
 
 enum TunerType
 {
-	TuneInt(rg : RangeMapping);
-	TuneFloat(rg : RangeMapping);
+	TuneInt(rg : RangeMapping, limit /* constrain input to defined range */ : Bool);
+	TuneFloat(rg : RangeMapping, limit /* constrain input to defined range */ : Bool);
 	TuneBool;
 }
 
@@ -20,7 +20,9 @@ class Tuner
 	public var n /*display name*/ : String;
 	public var m /*mapping name*/ : String;
 	
-	public function new() {}
+	public function new() { }
+
+	private function doLimit(v : Dynamic, l : Dynamic, h : Dynamic) { if (v < l) return l; else if (v > h) return h; return v; }
 	
 	public function refresh() : Bool
 	{
@@ -28,8 +30,8 @@ class Tuner
 		if (cur != o) { o = cur; 
 			switch(t)
 			{
-				case TuneFloat(rg): i = rg.i(o);
-				case TuneInt(rg): i = rg.i(o);
+				case TuneFloat(rg, limit): i = rg.i(o); if (limit) i = doLimit(i, rg.l1, rg.h1);
+				case TuneInt(rg, limit): i = rg.i(o); if (limit) i = doLimit(i, rg.l1, rg.h1);
 				case TuneBool: i = o;
 			}
 			return true; 
@@ -38,13 +40,13 @@ class Tuner
 	}
 	
 	public function si(i : Dynamic) {
-		this.i = i;
 		switch(t)
 		{
-			case TuneFloat(rg): o = rg.o(i); 
-			case TuneInt(rg): o = Std.int(rg.o(i));
+			case TuneFloat(rg, limit): if (limit) i = doLimit(i, rg.l1, rg.h1); o = rg.o(i);
+			case TuneInt(rg, limit): if (limit) i = doLimit(i, rg.l1, rg.h1); o = Std.int(rg.o(i));
 			case TuneBool: o = i;
 		}
+		this.i = i;
 		b.s(o);
 	}	
 	
@@ -56,12 +58,12 @@ class Tuner
 	}
 	
 	/* conveniences */
-	public static function makeInt(o : Dynamic, f : String, rg : RangeMapping, d : Int, m : String, n : String) {
-		var t = new Tuner(); t.t = TuneInt(rg); t.d = d; t.b = box(o, f); t.m = m; t.n = n; t.si(rg.i(t.b.g())); return t;
+	public static function makeInt(o : Dynamic, f : String, rg : RangeMapping, d : Int, m : String, n : String, limit : Bool) {
+		var t = new Tuner(); t.t = TuneInt(rg, limit); t.d = d; t.b = box(o, f); t.m = m; t.n = n; t.si(rg.i(t.b.g())); return t;
 	}
 	
-	public static function makeFloat(o : Dynamic, f : String, rg : RangeMapping, d : Float, m : String, n : String) {
-		var t = new Tuner(); t.t = TuneFloat(rg); t.d = d; t.b = box(o, f); t.m = m; t.n = n; t.si(rg.i(t.b.g())); return t;
+	public static function makeFloat(o : Dynamic, f : String, rg : RangeMapping, d : Float, m : String, n : String, limit : Bool) {
+		var t = new Tuner(); t.t = TuneFloat(rg, limit); t.d = d; t.b = box(o, f); t.m = m; t.n = n; t.si(rg.i(t.b.g())); return t;
 	}
 	
 	public static function makeBool(o : Dynamic, f : String, d : Bool, m : String, n : String) {

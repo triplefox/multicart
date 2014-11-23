@@ -27,7 +27,7 @@ import com.ludamix.multicart.d.Vec2F;
 	
 */
 
-enum BallState { Play; ServeL; ServeR; }
+enum BallState { Play(left_side : Bool); ServeL; ServeR; }
 
 class Higenbotham implements MulticartGame
 {
@@ -40,6 +40,8 @@ class Higenbotham implements MulticartGame
 	public var ball : { v /*velocity*/ :Vec2F, p /*position*/ :Vec2F, s : BallState };
 	public var angleL : Float; public var angleR : Float; /* player angles */
 	public var hitL : Bool; public var hitR : Bool; /* player hits */
+	public var vecL : Vec2F;  public var vecR : Vec2F; /* player displayed angles */
+	public var hp : Float; /* hit power of volley */
 	public static inline var PW /* playfield width */ = 150;
 	public static inline var PH /* playfield height */ = 100;
 	public static inline var NH /* net height (top y = PH-NH) */ = 20;
@@ -47,18 +49,20 @@ class Higenbotham implements MulticartGame
 	public static inline var BXR /* ball init x right */ = PW * 0.8;
 	public static inline var BXL /* ball init x left */ = PW * 0.2;
 	public static inline var BY /* ball init y */ = PH * 0.5;
+	public static inline var HITPOW /* base hit power */ = 2.5;
+	public static inline var HITINC /* add to hit power each hit */ = 0.1;
 	
 	public function start(inp : InputConfig)
 	{
 		{ /* init display */ disp = new Sprite(); Lib.current.stage.addChild(disp); }
 		{ /* init playfield */ pfs = new Sprite(); disp.addChild(pfs); }
 		{ /* init ball */ ball = { p:Vec2F.c(PW * 0.8, PH * 0.5), v:Vec2F.c(0., 0.), s:ServeR }; }
-		{ /* init players */ angleL = 0.; angleR = 0.; }
+		{ /* init players */ angleL = 0.; angleR = -Math.PI; hitL = false; hitR = false; vecL = Vec2F.c(1, 0); vecR = Vec2F.c( -1, 0); }
 		{ /* configure input */ this.inp = inp;
-			inp.tfloat(ball.v, "x", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "float000", "Ball X Vel");
-			inp.tfloat(ball.v, "y", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "float001", "Ball Y Vel");
-			inp.tfloat(this, "angleL", RangeMapping.neg( -90, 90, 1., 0.), 0., "p1horiz", "Player 1 Angle");
-			inp.tfloat(this, "angleR", RangeMapping.neg( -90, 90, 1., 0.), 0., "p2horiz", "Player 2 Angle");
+			inp.tfloat(ball.v, "x", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "t0", "Ball X Vel", false);
+			inp.tfloat(ball.v, "y", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "t1", "Ball Y Vel", false);
+			inp.tfloat(this, "angleL", RangeMapping.neg( -Math.PI / 2, Math.PI / 2, 1., 0.), 0., "p1horiz", "Player 1 Angle", true);
+			inp.tfloat(this, "angleR", RangeMapping.neg( -Math.PI * 3 / 2, -Math.PI / 2, 1., 0.), 0., "p2horiz", "Player 2 Angle", true);
 			inp.tbool(this, "hitL", false, "p1b1tap", "Player 1 Hit Ball");
 			inp.tbool(this, "hitR", false, "p2b1tap", "Player 2 Hit Ball");
 		}
@@ -67,25 +71,34 @@ class Higenbotham implements MulticartGame
 	
 	public function frame(ev : Event)
 	{
-		{ /* update inputs */ inp.refresh("p1horiz"); inp.refresh("p1vert"); inp.poll(); }
+		{ /* update inputs and refresh tuning */ for (i in 0...2) inp.refresh("t" + Std.string(i)); inp.poll(); 
+			inp.refresh("p1horiz");
+			inp.refresh("p2horiz");
+		}
 		{ /* simulate */
+			vecL.ofRad(angleL); 
+			vecR.ofRad(angleR); 
 			var b = ball;
-			//trace([hitL, hitR]);
 			switch(b.s)
 			{
-				case Play:
+				case Play(left_side):
 					/* gravity */ b.v.y += GRAVITY;
-					/* bounce */ if (b.p.y + b.v.y > PH - 1) 
-					{ b.v.y = -b.v.y * 0.5; if (Math.abs(b.v.y)<=GRAVITY) /* clamp to dead zone */ { b.v.y = 0.; } }
+					/* bounce floor */ if (b.p.y + b.v.y > PH - 1) 
+					{ b.v.y = -b.v.y; if (Math.abs(b.v.y)<=GRAVITY) /* clamp to dead zone */ { b.v.y = 0.; } }
+					/* bounce net */ { var start = b.p.x < PW / 2; var end = b.p.x + b.v.x < PW / 2; 
+						if (b.p.y + b.v.y > (PH - NH) - 1 && (start != end)) { b.v.x = -b.v.x; }
+					}
 					/* apply motion (euler integration) */ b.p.x += b.v.x; b.p.y += b.v.y;
+					if (hitL && b.p.x <= PW / 2 && left_side) { ball.v.setfmul(vecL, hp); hp += HITINC; b.s = Play(false); }
+					if (hitR && b.p.x >= PW / 2 && !left_side) { ball.v.setfmul(vecR, hp); hp += HITINC; b.s = Play(true); }
 					if (b.p.x > PW) { b.s = ServeL; }
 					if (b.p.x < 0) { b.s = ServeR; }
 				case ServeR:
-					b.p.x = BXR; b.p.y = BY; b.v.x = 0.; b.v.y = 0.;
-					if (hitR) b.s = Play;
+					b.p.x = BXR; b.p.y = BY; b.v.x = 0.; b.v.y = 0.; hp = HITPOW;
+					if (hitR) { ball.v.setfmul(vecR, hp);  b.s = Play(false); }
 				case ServeL:
-					b.p.x = BXL; b.p.y = BY; b.v.x = 0.; b.v.y = 0.;
-					if (hitL) b.s = Play;
+					b.p.x = BXL; b.p.y = BY; b.v.x = 0.; b.v.y = 0.; hp = HITPOW;
+					if (hitL) { ball.v.setfmul(vecL, hp); b.s = Play(true); }
 			}
 		}
 		{ /* render */
@@ -106,6 +119,13 @@ class Higenbotham implements MulticartGame
 				/* ground */ g.moveTo(0,PH); g.lineTo(PW, PH);
 				/* net */ g.moveTo(PW/2, PH); g.lineTo(PW/2, PH-NH);
 				/* ball */ g.beginFill(0xFFFFFF, 1.); g.drawRect(ball.p.x, ball.p.y, 1., 1.); g.endFill();
+			}
+			{ /* draw the player input */
+				var g = disp.graphics; 
+				g.lineStyle(2, 0xFFFFFFFF, 1.); 
+				var r /* radius */ = 16.; var ri /* inner radius */ = 8.; var xL = r; var xR = Lib.current.stage.stageWidth - r;
+				/* left */ g.drawCircle(xL, r, ri);  g.moveTo(xL, r); g.lineTo(xL + r * vecL.x, r + r * vecL.y);
+				/* right */ g.drawCircle(xR, r, ri); g.moveTo(xR, r); g.lineTo(xR + r * vecR.x, r + r * vecR.y);
 			}
 		}
 	}

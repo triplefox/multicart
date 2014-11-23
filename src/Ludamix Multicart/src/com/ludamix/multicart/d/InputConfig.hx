@@ -54,8 +54,8 @@ class InputConfig
 	private function kpush(map : Map<Int, Array<KeyMapping>>, k, v) { if (!map.exists(k)) map.set(k, new Array<KeyMapping>()); map.get(k).push(v); }
 	private function tpush(map : Map<String, Array<Tuner>>, k, v) { if (!map.exists(k)) map.set(k, new Array<Tuner>()); map.get(k).push(v); }
 	/* tuner declarations */
-	public function tint(o : Dynamic, f : String, rg : RangeMapping, d : Int, m : String, n : String) { tpush(i, m, Tuner.makeInt(o,f,rg,d,m,n)); }
-	public function tfloat(o : Dynamic, f : String, rg : RangeMapping, d : Float, m : String, n : String) { tpush(this.f, m, Tuner.makeFloat(o,f,rg,d,m,n)); }
+	public function tint(o : Dynamic, f : String, rg : RangeMapping, d : Int, m : String, n : String, lim : Bool) { tpush(i, m, Tuner.makeInt(o,f,rg,d,m,n,lim)); }
+	public function tfloat(o : Dynamic, f : String, rg : RangeMapping, d : Float, m : String, n : String, lim : Bool) { tpush(this.f, m, Tuner.makeFloat(o,f,rg,d,m,n,lim)); }
 	public function tbool(o : Dynamic, f : String, d : Bool, m : String, n : String) { tpush(b, m, Tuner.makeBool(o,f,d,m,n)); }
 	/* key declarations */
 	public function kbutton(c /*code*/ : Int, m /*mapping*/ : String) { ktap(c, m + "tap"); khold(c, m + "hold"); }
