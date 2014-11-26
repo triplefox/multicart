@@ -11,6 +11,9 @@ typedef Box = { g : Void->Dynamic, s : Dynamic->Void };
 
 class Tuner
 {
+
+	/* Note that RangeMapping inverts the idea of "input" and "output" used here, 
+	because we generally want the _unit values_ to have a non-linear representation. */
 	
 	public var t /*type*/ : TunerType;
 	public var i /*local input value*/ : Dynamic;
@@ -30,8 +33,8 @@ class Tuner
 		if (cur != o) { o = cur; 
 			switch(t)
 			{
-				case TuneFloat(rg, limit): i = rg.i(o); if (limit) i = doLimit(i, rg.l1, rg.h1);
-				case TuneInt(rg, limit): i = rg.i(o); if (limit) i = doLimit(i, rg.l1, rg.h1);
+				case TuneFloat(rg, limit): i = rg.o(o); if (limit) i = doLimit(i, rg.l2, rg.h2);
+				case TuneInt(rg, limit): i = rg.o(o); if (limit) i = doLimit(i, rg.l2, rg.h2);
 				case TuneBool: i = o;
 			}
 			return true; 
@@ -42,8 +45,8 @@ class Tuner
 	public function si(i : Dynamic) {
 		switch(t)
 		{
-			case TuneFloat(rg, limit): if (limit) i = doLimit(i, rg.l1, rg.h1); o = rg.o(i);
-			case TuneInt(rg, limit): if (limit) i = doLimit(i, rg.l1, rg.h1); o = Std.int(rg.o(i));
+			case TuneFloat(rg, limit): if (limit) i = doLimit(i, rg.l2, rg.h2); o = rg.i(i);
+			case TuneInt(rg, limit): if (limit) i = doLimit(i, rg.l2, rg.h2); o = Std.int(rg.i(i));
 			case TuneBool: o = i;
 		}
 		this.i = i;
@@ -59,11 +62,11 @@ class Tuner
 	
 	/* conveniences */
 	public static function makeInt(o : Dynamic, f : String, rg : RangeMapping, d : Int, m : String, n : String, limit : Bool) {
-		var t = new Tuner(); t.t = TuneInt(rg, limit); t.d = d; t.b = box(o, f); t.m = m; t.n = n; t.si(rg.i(t.b.g())); return t;
+		var t = new Tuner(); t.t = TuneInt(rg, limit); t.d = d; t.b = box(o, f); t.m = m; t.n = n; t.si(rg.o(t.b.g())); return t;
 	}
 	
 	public static function makeFloat(o : Dynamic, f : String, rg : RangeMapping, d : Float, m : String, n : String, limit : Bool) {
-		var t = new Tuner(); t.t = TuneFloat(rg, limit); t.d = d; t.b = box(o, f); t.m = m; t.n = n; t.si(rg.i(t.b.g())); return t;
+		var t = new Tuner(); t.t = TuneFloat(rg, limit); t.d = d; t.b = box(o, f); t.m = m; t.n = n; t.si(rg.o(t.b.g())); return t;
 	}
 	
 	public static function makeBool(o : Dynamic, f : String, d : Bool, m : String, n : String) {

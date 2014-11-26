@@ -14,9 +14,12 @@ class RangeMapping
 	/* range 1 or range 2 remapped to a 0-1 spectrum */
 	public function pct2(cv : Float) { return sc(l2, h2, 0., 1., cv); }
 	public function pct1(v : Float) { return pct2(i(v)); }
+	/* length of range 1 and 2 */
+	public inline function r1() { return h1 - l1; }
+	public inline function r2() { return h2 - l2; }
 	
 	/* conveniences */
-	public static function pos(l, h, c, d) /*positive 0...1 mapping*/ { return new RangeMapping(0.,1.,l,h,c); }
-	public static function neg(l, h, c, d) /*negative -1...1 mapping*/ { return new RangeMapping(-1.,1.,l,h,c); }
+	public static function pos(l, h, c, d) /*positive 0...1 mapping*/ { return new RangeMapping(l,h,0.,1.,c); }
+	public static function neg(l, h, c, d) /*negative -1...1 mapping*/ { return new RangeMapping(l,h,-1.,1.,c); }
 	
 }
