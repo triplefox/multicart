@@ -7,6 +7,7 @@
 	
 	<!-- output -->
 	<app main="com.ludamix.multicart.Main" file="LudamixMulticart" path="bin" />
+	<app swf-version="11.4" />
 	
 	<window background="#000000" fps="60" />
 	<window width="800" height="480" unless="mobile" />

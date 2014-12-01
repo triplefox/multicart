@@ -38,7 +38,7 @@ class Main extends Sprite
 		/* audio */
 		beeper = new Beeper();
 		/* default game */
-		startGame(new Higenbotham());
+		startGame(new Spacewar());
 	}
 
 	public function new() { 
