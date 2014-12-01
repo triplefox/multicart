@@ -19,7 +19,7 @@ class Beeper
 	}
 	
 	public function start() { snd = new Sound(); snd.addEventListener(flash.events.SampleDataEvent.SAMPLE_DATA, onSamples); snd.play(); }	
-	public function stop() { snd.close(); snd.removeEventListener(flash.events.SampleDataEvent.SAMPLE_DATA, onSamples); snd = null; }	
+	public function stop() { snd.removeEventListener(flash.events.SampleDataEvent.SAMPLE_DATA, onSamples); snd = null; }	
 	
 	function onSamples(sde : SampleDataEvent)
 	{

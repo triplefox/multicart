@@ -28,6 +28,8 @@ class KeyMapping
 
 	public function new() { held = false; }
 	
+	public function toString() { return '<d $imd h $imh u $imu $held>'; }
+	
 	private function doKey(t : Tuner, type : KeyType, data : Dynamic)
 	{
 		switch(type)

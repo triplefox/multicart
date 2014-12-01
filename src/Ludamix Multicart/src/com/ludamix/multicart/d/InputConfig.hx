@@ -17,6 +17,9 @@ class InputConfig
 		resetDevices();
 	}
 	
+	/* return the keycodes currently held */
+	public function keyState() { var r = new Array<Int>(); for (k in kf) { for (i in k) { if (i.held) r.push(i.c); }  } return r; }
+	
 	public function onKeyDown(key : KeyboardEvent)
 	{
 		if (kf.exists(key.keyCode)) { var a = kf.get(key.keyCode); for (m in a) { if (f.exists(m.imd)) { for (t in f.get(m.imd)) m.down(t); } } }
@@ -58,6 +61,10 @@ class InputConfig
 	public function tfloat(o : Dynamic, f : String, rg : RangeMapping, d : Float, m : String, n : String, lim : Bool) { tpush(this.f, m, Tuner.makeFloat(o,f,rg,d,m,n,lim)); }
 	public function tbool(o : Dynamic, f : String, d : Bool, m : String, n : String) { tpush(b, m, Tuner.makeBool(o,f,d,m,n)); }
 	/* key declarations */
+	/* When using a key, "<key>tap" and "<key>hold" are the button presses. 
+	 * "<key>" usually substitutes for a continuous value change, e.g. a dial turn. 
+	 * "tap" keys must have their value cleared manually by your program.
+	 * */
 	public function kbutton(c /*code*/ : Int, m /*mapping*/ : String) { ktap(c, m + "tap"); khold(c, m + "hold"); }
 	public function ktap(c /*code*/ : Int, m /*mapping*/ : String) { kpush(kb, c, KeyMapping.btap(c, m)); }
 	public function khold(c /*code*/ : Int, m /*mapping*/ : String) { kpush(kb, c, KeyMapping.bhold(c, m)); }

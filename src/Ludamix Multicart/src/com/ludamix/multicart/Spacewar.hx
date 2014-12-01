@@ -6,6 +6,7 @@ import com.ludamix.multicart.d.RangeMapping;
 import haxe.ds.Vector;
 import openfl.display.Sprite;
 import openfl.events.Event;
+import openfl.events.KeyboardEvent;
 import openfl.geom.Rectangle;
 import openfl.Lib;
 import com.ludamix.multicart.d.Vec2F;
@@ -55,13 +56,14 @@ class Spacewar implements MulticartGame
 		{ /* init players */ players = [ { v:Vec2F.c(0., 0.), p:Vec2F.c(P0X, P0Y), a:P0A, av:0., o:0, l:true },
 										 { v:Vec2F.c(0., 0.), p:Vec2F.c(P1X, P1Y), a:P1A, av:0., o:1, l:true } ]; }
 		{ /* configure input */ this.inp = inp;
-			controls = [for (i in 0...2) {f:false,t:false,l:false,r:false,h:false } ];
-			inp.tbool(controls[0], "t", false, "p1b1tap", "Player 1 Thrust");
-			inp.tbool(controls[0], "l", false, "p1left", "Player 1 Left");
-			inp.tbool(controls[0], "r", false, "p1right", "Player 1 Right");
-			inp.tbool(controls[1], "t", false, "p2b1tap", "Player 2 Thrust");
-			inp.tbool(controls[1], "l", false, "p2left", "Player 2 Left");
-			inp.tbool(controls[1], "r", false, "p2right", "Player 2 Right");
+			controls = [for (i in 0...2) { f:false, t:false, l:false, r:false, h:false } ];
+			for (i in 0...2) {
+				inp.tbool(controls[i], "t", false, 'p${i}uphold', 'Player ${i} Thrust');
+				inp.tbool(controls[i], "l", false, 'p${i}lefthold', 'Player ${i} Left');
+				inp.tbool(controls[i], "r", false, 'p${i}righthold', 'Player ${i} Right');
+				inp.tbool(controls[i], "f", false, 'p${i}b1tap', 'Player ${i} Fire');
+				inp.tbool(controls[i], "h", false, 'p${i}b2tap', 'Player ${i} Hyperspace');
+			}
 		}
 		{ /* start audio */ Main.beeper.start(); 
 			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440.]), Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 220.])];
@@ -74,9 +76,19 @@ class Spacewar implements MulticartGame
 	
 	public function frame(ev : Event)
 	{
-		{ /* update inputs and refresh tuning */ inp.poll(); 
+		{ /* update inputs and refresh tuning */ inp.poll();
 		}
 		{ /* simulate */
+			for (i in 0...controls.length)
+			{
+				if (controls[i].t) trace("thrust "+Std.string(i));
+				if (controls[i].l) trace("left "+Std.string(i));
+				if (controls[i].r) trace("right "+Std.string(i));
+				if (controls[i].f) trace("fire "+Std.string(i));
+				if (controls[i].h) trace("hyper " + Std.string(i));
+				controls[i].f = false;
+				controls[i].h = false;
+			}
 		}
 		{ /* render */
 			/* common parameters */

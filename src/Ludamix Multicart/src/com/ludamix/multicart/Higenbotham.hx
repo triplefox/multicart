@@ -67,10 +67,10 @@ class Higenbotham implements MulticartGame
 		{ /* configure input */ this.inp = inp;
 			inp.tfloat(ball.v, "x", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "t0", "Ball X Vel", false);
 			inp.tfloat(ball.v, "y", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "t1", "Ball Y Vel", false);
-			inp.tfloat(this, "angleL", RangeMapping.neg( -Math.PI / 2 + 0.03, Math.PI / 2 - 0.03, 1., 0.), 0., "p1horiz", "Player 1 Angle", true);
-			inp.tfloat(this, "angleR", RangeMapping.neg( -Math.PI * 3 / 2 + 0.03, -Math.PI / 2 - 0.03, 1., 0.), 0., "p2horiz", "Player 2 Angle", true);
-			inp.tbool(this, "hitL", false, "p1b1tap", "Player 1 Hit Ball");
-			inp.tbool(this, "hitR", false, "p2b1tap", "Player 2 Hit Ball");
+			inp.tfloat(this, "angleL", RangeMapping.neg( -Math.PI / 2 + 0.03, Math.PI / 2 - 0.03, 1., 0.), 0., "p0horiz", "Player 1 Angle", true);
+			inp.tfloat(this, "angleR", RangeMapping.neg( -Math.PI * 3 / 2 + 0.03, -Math.PI / 2 - 0.03, 1., 0.), 0., "p1horiz", "Player 2 Angle", true);
+			inp.tbool(this, "hitL", false, "p0b1tap", "Player 1 Hit Ball");
+			inp.tbool(this, "hitR", false, "p1b1tap", "Player 2 Hit Ball");
 		}
 		{ /* start audio */ Main.beeper.start(); 
 			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440.]), Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 220.])];
@@ -84,8 +84,8 @@ class Higenbotham implements MulticartGame
 	public function frame(ev : Event)
 	{
 		{ /* update inputs and refresh tuning */ for (i in 0...2) inp.refresh("t" + Std.string(i)); inp.poll(); 
+			inp.refresh("p0horiz");
 			inp.refresh("p1horiz");
-			inp.refresh("p2horiz");
 		}
 		{ /* simulate */
 			vecL.ofRad(angleL); 
