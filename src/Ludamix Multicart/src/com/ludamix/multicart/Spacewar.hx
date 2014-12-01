@@ -64,6 +64,7 @@ class Spacewar implements MulticartGame
 				inp.tbool(controls[i], "f", false, 'p${i}b1tap', 'Player ${i} Fire');
 				inp.tbool(controls[i], "h", false, 'p${i}b2tap', 'Player ${i} Hyperspace');
 			}
+			inp.check(); if (inp.warn_t.length > 0) trace(inp.warn_t);
 		}
 		{ /* start audio */ Main.beeper.start(); 
 			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440.]), Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 220.])];

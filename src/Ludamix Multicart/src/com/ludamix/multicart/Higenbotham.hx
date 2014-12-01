@@ -71,6 +71,7 @@ class Higenbotham implements MulticartGame
 			inp.tfloat(this, "angleR", RangeMapping.neg( -Math.PI * 3 / 2 + 0.03, -Math.PI / 2 - 0.03, 1., 0.), 0., "p1horiz", "Player 2 Angle", true);
 			inp.tbool(this, "hitL", false, "p0b1tap", "Player 1 Hit Ball");
 			inp.tbool(this, "hitR", false, "p1b1tap", "Player 2 Hit Ball");
+			inp.check(); if (inp.warn_t.length > 0) trace(inp.warn_t);
 		}
 		{ /* start audio */ Main.beeper.start(); 
 			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440.]), Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 220.])];

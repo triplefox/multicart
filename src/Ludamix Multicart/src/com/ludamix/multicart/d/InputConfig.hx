@@ -10,6 +10,8 @@ class InputConfig
 	public var f : Map<String, Array<Tuner>>; public var i : Map<String, Array<Tuner>>; public var b : Map<String, Array<Tuner>>;
 	/* key devices */
 	public var kf : Map<Int, Array<KeyMapping>>; public var ki : Map<Int, Array<KeyMapping>>; public var kb : Map<Int, Array<KeyMapping>>;
+	/* warnings */
+	public var warn_t /*tuners*/ : Array<String>;
 	
 	public function new()
 	{
@@ -51,6 +53,15 @@ class InputConfig
 	public function resetTuners() { f = new Map(); i = new Map(); b = new Map(); }
 	
 	public function resetDevices() { kf = new Map(); ki = new Map(); kb = new Map(); }
+	
+	public function check() /* check for unmapped tuners */ { warn_t = new Array();
+		var z = new Map<String,Bool>(); for (a in kf) { for (m in a) { z.set(m.imd, true); z.set(m.imh, true); z.set(m.imu, true); } }
+		for (j in f.keys()) { if (!z.exists(j)) warn_t.push("missing float mapping: "+j); }
+		var z = new Map<String,Bool>(); for (a in ki) { for (m in a) { z.set(m.imd, true); z.set(m.imh, true); z.set(m.imu, true); } }
+		for (j in i.keys()) { if (!z.exists(j)) warn_t.push("missing int mapping: "+j); }
+		var z = new Map<String,Bool>(); for (a in kb) { for (m in a) { z.set(m.imd, true); z.set(m.imh, true); z.set(m.imu, true); } }
+		for (j in b.keys()) { if (!z.exists(j)) warn_t.push("missing bool mapping: "+j); }
+	}
 	
 	/* conveniences */
 	/* push to map<array<T>> */
