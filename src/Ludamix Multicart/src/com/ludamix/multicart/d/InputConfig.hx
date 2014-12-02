@@ -5,6 +5,7 @@ class InputConfig
 {
 	
 	/* maps various devices (keyboard, mouse, etc.) to "tuners" - program state that is boxed and remapped to behave as a tunable range. */
+	/* shorthand: f - float, i - int, b - bool */
 	
 	/* tuners */
 	public var f : Map<String, Array<Tuner>>; public var i : Map<String, Array<Tuner>>; public var b : Map<String, Array<Tuner>>;
