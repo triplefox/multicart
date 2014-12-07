@@ -1,0 +1,77 @@
+package com.ludamix.multicart.d;
+import openfl.display.Sprite;
+import openfl.events.MouseEvent;
+import openfl.events.Event;
+import openfl.Lib;
+
+class Knob extends Sprite
+{
+	
+	public var tuner : Tuner;
+	public var vg /* grabbed==true? */ : Bool; public var gx /* grab x */ : Float; public var gy /* grab y */ : Float;
+	public var va /* value acceleration */ : Float; public var vv /* velocity */ : Float; public var vf /* friction */ : Float; public var vd /* deadzone */: Float;
+	public var gs /* grab scaling */ : Float;
+	public var radius : Float;
+	public var dirty : Bool;
+	
+	private static var _pts : Array<{x:Float,y:Float}>;	
+	
+	private static inline var ARNG = 64;
+	
+	public static function init()
+	{
+		var tau = Math.PI * 2; var _amul = tau / (ARNG-1);
+		_pts = [for (i in 0...ARNG) { x: -Math.sin(i * _amul), y: Math.cos(i * _amul) } ];		
+	}
+	
+	public function new(circumference: Float, tuner : Tuner, ?vf = 0.7, ?vd = 0.001, ?gs = 0.01) { dirty = true;
+		super(); this.radius = circumference / 2; this.vf = vf; this.vd = vd; va = 0.; vv = 0.; vg = false;
+		this.gs = gs;
+		this.tuner = tuner;
+		for (n in [MouseEvent.MOUSE_MOVE, MouseEvent.CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP])
+			this.addEventListener(n, function(ev) { if (!vg) onMouse(ev); } ); /* allow top level to pass in events when grabbing */
+		if (_pts == null) init();
+		render();
+	}
+	
+	public function uninit()
+	{
+		for (n in [MouseEvent.MOUSE_MOVE, MouseEvent.CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP])
+			this.removeEventListener(n, onMouse);		
+	}
+	
+	public function render()
+	{
+		if (!dirty && !vg) return; dirty = false;
+		if (vg)  /* update grab, accelerate the knob */
+		{
+			var lx = Lib.current.stage.mouseX; var ly = Lib.current.stage.mouseY;
+			va = dist(gx, lx, gy, ly); var dx = lx - gx; var dy = ly - gy; if (dx-dy < 0) va = -va;
+			gx = lx; gy = ly;
+			/* accelerate */
+			vv += va * gs; va = 0.; vv *= vf; if (Math.abs(vv) < vd) vv = 0.;
+			tuner.si(tuner.i + vv);
+		}
+		else { tuner.refresh(); }
+		var g = this.graphics; g.clear(); var bg = 0xFF222222; var fg = 0xFFAAAAAA; g.lineStyle(0, 0xFFCCCCCC);
+		
+		{ /* draw the knob */
+			var r = radius; var x = r; var y = x;
+			/* circle */ g.beginFill(bg); g.drawCircle(x, y, r); g.endFill(); g.moveTo(x, y + r * 0.5); g.lineTo(x, y + r);
+			/* arc */ var pct = tuner.pcti(); g.beginFill(fg); g.moveTo(x, y);
+				var sl = Math.round(T.clamp(0.,ARNG, T.lscale(0, 1, 0, ARNG, pct)));
+				for (n in 0...sl) { g.lineTo((_pts[n].x * r) + x, (_pts[n].y * r) + y); }
+				g.lineTo(x, y); g.endFill();
+		}
+		
+	}
+	
+	public function dist(a0 : Float,a1 : Float,b0 : Float,b1 : Float) { var a2 = (a0 - a1); var b2 = (b0 - b1); return (Math.sqrt(a2 * a2 + b2 * b2)); }
+	
+	public function onMouse(ev : MouseEvent)
+	{
+		if (ev.type == MouseEvent.MOUSE_DOWN) { vg = true; vv = 0.; va = 0.; gx = Lib.current.stage.mouseX; gy = Lib.current.stage.mouseY; }
+		else if (ev.type == MouseEvent.MOUSE_UP) { vg = false; }
+	}
+	
+}

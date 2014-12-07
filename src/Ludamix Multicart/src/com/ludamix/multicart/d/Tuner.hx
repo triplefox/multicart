@@ -13,7 +13,7 @@ class Tuner
 {
 
 	/* Note that RangeMapping inverts the idea of "input" and "output" used here, 
-	because we generally want the _unit values_ to have a non-linear representation. */
+	because we generally want the _target unit values_ to have a non-linear representation. */
 	
 	public var t /*type*/ : TunerType;
 	public var i /*local input value*/ : Dynamic;
@@ -29,7 +29,7 @@ class Tuner
 	
 	public function refresh() : Bool
 	{
-		var cur = b.g(); 
+		var cur = b.g();
 		if (cur != o) { o = cur; 
 			switch(t)
 			{
@@ -54,6 +54,24 @@ class Tuner
 	}	
 	
 	public function so(o : Dynamic) { b.s(o); refresh(); }	
+	
+	public function pcti() : Float {
+		switch(t)
+		{
+			case TuneFloat(rg, limit): return rg.pct2(i);
+			case TuneInt(rg, limit): return rg.pct2(i);
+			case TuneBool: return (i ? 1. : 0.);
+		}
+	}
+	
+	public function pcto() : Float {
+		switch(t)
+		{
+			case TuneFloat(rg, limit): return rg.pct1(o);
+			case TuneInt(rg, limit): return rg.pct1(o);
+			case TuneBool: return (o ? 1. : 0.);
+		}
+	}
 	
 	public static function box(o : Dynamic, f : String) { return { 
 		g:function() { return Reflect.field(o, f); },

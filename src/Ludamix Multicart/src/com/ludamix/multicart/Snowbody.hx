@@ -1,11 +1,14 @@
 package com.ludamix.multicart;
 import com.ludamix.multicart.d.Beeper;
 import com.ludamix.multicart.d.InputConfig;
+import com.ludamix.multicart.d.Knob;
 import com.ludamix.multicart.d.Proportion;
 import com.ludamix.multicart.d.RangeMapping;
 import com.ludamix.multicart.d.T;
+import com.ludamix.multicart.d.Tuner;
 import haxe.ds.Vector;
 import lime.utils.Float32Array;
+import openfl.events.MouseEvent;
 import openfl.geom.ColorTransform;
 import openfl.geom.Matrix;
 import openfl.geom.Point;
@@ -23,6 +26,9 @@ import com.ludamix.multicart.d.Vec2F;
 	Digital Snowbody Game
 	
 	Task 2. Introduce knobs to scale and skew things
+	
+	Let's make the last thing for tonight be the snowflakes...
+	
 	Task 3. Get away from the perlin noise placeholders somehow (maybe a thing to generate the bitmaps)
 	Task 4. Dump more stuff on (bitmap distort, bg color change, snowflake fx, etc.)
 	Task 5. Export functionality...
@@ -33,6 +39,8 @@ typedef SpineVec = { p:Vec2F, r/*radians*/:Float, m/*magnitude*/:Float };
 typedef Snowpart = { p/*position*/:Vec2F, v/*velocity*/:Vec2F, r/*radians*/:Float, rv/*radial velocity*/:Float, b/*bitmap*/:Int, 
 	sw/*scale width*/:Float, sh/*scale height*/:Float };
 
+typedef Snowflake = { p/*position*/:Vec2F, r/*radians*/:Float, sw/*scale width*/:Float, sh/*scale height*/:Float };
+	
 class Snowbody implements MulticartGame
 {
 	
@@ -41,6 +49,7 @@ class Snowbody implements MulticartGame
 	public var inp /* input config and state */ : InputConfig;
 	public var disp /* main display */ : Sprite;
 	public var pfs /* playfield sprite */ : Bitmap;
+	public var clicker /* clicker sprite - captures mouse events */ : Sprite;
 	
 	public var fe /*frames elapsed since start*/ : Int;
 	public var ldt /*last delta time*/ : Float;
@@ -52,13 +61,17 @@ class Snowbody implements MulticartGame
 	public var flakebmp /*snowflake base bitmap*/ : Bitmap;
 	
 	public var parts : Array<Snowpart>;
-	
+
 	public var beep_gain : Vector<Float>; /* beeper gain */
 	public var beep_freq : Array<Vector<Float>>; /* beeper freq */
 	
 	public var dir : Vec2F; /*temporary for direction*/
 	
 	public var explosion_damp : Float;
+	
+	public var tunertestv : Float;
+	public var tuner : Tuner;
+	public var knobs : Array<Knob>;
 	
 	/* inputs */
 	public var trigger_explosion : Bool;
@@ -98,6 +111,11 @@ class Snowbody implements MulticartGame
 	{
 		{ /* init display */ disp = new Sprite(); Lib.current.stage.addChild(disp); }
 		{ /* init playfield */ pfs = new Bitmap(new BitmapData(PW, PH)); disp.addChild(pfs); }
+		{ /* init clicker */ clicker = new Sprite(); disp.addChild(clicker); 
+			for (e in [MouseEvent.CLICK, MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP])
+				clicker.addEventListener(e, onClicker);
+			var g = clicker.graphics; g.beginFill(0, 0.); g.drawRect(0., 0., Lib.current.stage.width, Lib.current.stage.height); g.endFill();
+		}
 		{ /* init bitmaps */ var b = new BitmapData(256, 256, true, 0); b.perlinNoise(10., 10., 4, 0, false, true); bslice(b); }
 		{ /* init timers */ fe = 0; ldt = Lib.getTimer(); mdt = 0.; }
 		{ /* init parameter values */ 
@@ -142,6 +160,11 @@ class Snowbody implements MulticartGame
 		}
 		{ /* special effects parameters */
 			explosion_damp = 0.;
+			
+			tunertestv = 0.;
+			tuner = Tuner.makeFloat(this, "explosion_damp", RangeMapping.pos(0., 1., 0.3, 0.), 0., "Test", "test", true);
+			knobs = [new Knob(128., tuner)];
+			for (k in knobs) clicker.addChild(k);
 		}
 		{ /* configure input */ this.inp = inp;
 			inp.check(); if (inp.warn_t.length > 0) trace(inp.warn_t);
@@ -180,29 +203,10 @@ class Snowbody implements MulticartGame
 			cr += rinc; cm += minc;
 			spine.push(next); cur = next;
 		}
-		for (n in spine)
-		{
-			ba.push(gdc(n.p.x, n.p.y));
-		}
-	}
-	
-	private function simPart(pt : Snowpart, p : Vec2F, r : Float)
-	{
-		{ /* add spring forces */
-			var POS_RATE = 0.02 * ( 1 - explosion_damp );
-			var ROT_RATE = 0.01 * ( 1 - explosion_damp );
-			var v = Vec2F.c(0., 0.); v.diff(pt.p, p, POS_RATE); pt.v.addf(v);
-			pt.rv += T.diffRad(pt.r, r) * ROT_RATE;
-		}
-		{ /* add velocity */
-			pt.p.addf(pt.v);
-			pt.r = (pt.r + pt.rv) % (Math.PI * 2);
-		}
-		{ /* apply friction */
-			var FRICT_RATE = 0.5;
-			pt.v.mulf(Vec2F.c(FRICT_RATE, FRICT_RATE));
-			pt.rv *= FRICT_RATE;
-		}
+		//for (n in spine) /* debug draw */
+		//{
+			//ba.push(gdc(n.p.x, n.p.y));
+		//}
 	}
 	
 	public function frame(ev : Event)
@@ -216,29 +220,67 @@ class Snowbody implements MulticartGame
 				explosion_damp = 1.;
 			}
 			trigger_explosion = false;
+			for (k in knobs) { if (!k.vg && k.tuner.refresh()) k.dirty = true; k.render(); }
 		}
 		var ra /*render command array*/ = new Array<Array<Float>>();
 		var ba /*debug point array*/ = new Array<Array<Float>>();
 		{ /* simulate */
 		
+			{ /* generate snowflake pattern */
+				/*tile width and height*/ var TW = 64; var TH = 64;
+				/*rotation velocity*/ var RV = 0.02;
+				/*flake width and height */ var FW = 0.1; var FH = 0.1;
+				/*group mod depth and frequency */ var GM = 64; var GF = 1/50;
+				/*per-flake mod depth */ var FX = 1 / 12; var FY = 1 / 8; var FS = 2;
+				var bx : Float = fe % TW - TW; var by : Float = fe % TH - TH; /* flakes assume a basic tile pattern */
+				bx = (bx + Math.sin(fe * GF) * GM);
+				var x = bx; var y = by;
+				var r = (fe * RV) % (Math.PI * 2);
+				while (y < PH + TH)
+				{
+					ra.push(grc(PTFLAKE, FW, FH, r, x, y + Math.sin((y*FX-x*FY))*FS, 1., 1., 1., 1., 0., 0., 0., 0.));
+					x += TW; if (x > PW + TW) { x = bx % TW; y += TH; }
+				}
+			}
+			
+			/* body origin */
 			var body = new Array<SpineVec>(); body.push({p:Vec2F.c(PW*0.5,PH*0.95),r:-Math.PI/2,m:1.5});
 			
+			/* render and sample spines */
 			renderSpine(body, 128, ba, ra, 0., 0., 0.5, fe/100, 0., fe/50);
 			var samples = [for (i in [0.05, 0.5, 0.95]) T.sample(body, i)];
-			
-			simPart(parts[SPLEG], samples[0].p, samples[0].r);
-			simPart(parts[SPCHEST], samples[1].p, samples[1].r);
-			simPart(parts[SPHEAD], samples[2].p, samples[2].r);
-			
 			var armr = [perpsv(T.sample(body, 0.5))]; armr[0].m = 0.8;
-			renderSpine(armr, 128, ba, ra, 0., 0., 0.1, fe/100, 0., fe/50);
 			var arml = [{m:armr[0].m,r:armr[0].r+Math.PI,p:armr[0].p.clone()}];
+			renderSpine(armr, 128, ba, ra, 0., 0., 0.1, fe/100, 0., fe/50);
 			renderSpine(arml, 128, ba, ra, 0., 0., 0.1, fe/100, 0., fe/50);
+			samples.push(T.sample(armr, 0.8));
+			samples.push(T.sample(arml, 0.8));
 			
-			var arms = T.sample(armr, 0.8); simPart(parts[SPARMR], arms.p, arms.r);
-			var arms = T.sample(arml, 0.8); simPart(parts[SPARML], arms.p, arms.r);
+			{ /* physics sim for body parts */
+				var i = 0;
+				for (pi in [SPLEG, SPCHEST, SPHEAD, SPARMR, SPARML])
+				{
+					var pt = parts[pi]; var p = samples[i].p; var r = samples[i].r;
+					{ /* add spring forces */
+						var POS_RATE = 0.02 * ( 1 - explosion_damp );
+						var ROT_RATE = 0.01 * ( 1 - explosion_damp );
+						var v = Vec2F.c(0., 0.); v.diff(pt.p, p, POS_RATE); pt.v.addf(v);
+						pt.rv += T.diffRad(pt.r, r) * ROT_RATE;
+					}
+					{ /* add velocity */
+						pt.p.addf(pt.v);
+						pt.r = (pt.r + pt.rv) % (Math.PI * 2);
+					}
+					{ /* apply friction */
+						var FRICT_RATE = 0.5;
+						pt.v.mulf(Vec2F.c(FRICT_RATE, FRICT_RATE));
+						pt.rv *= FRICT_RATE;
+					}
+					i+=1;
+				}
+			}
 			
-			for (p in parts)
+			for (p in parts) /* render graphics data */
 			{
 				ra.push(grc(p.b, p.sw, p.sh, p.r, p.p.x, p.p.y, 1., 1., 1., 1., 0., 0., 0., 0.));
 			}
@@ -289,6 +331,9 @@ class Snowbody implements MulticartGame
 	public function exit()
 	{
 		/* remove display */ Lib.current.stage.removeChild(disp);
+		/* remove clicker */ for (e in [MouseEvent.CLICK, MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP])
+			clicker.removeEventListener(e, onClicker);
+		/* remove knobs */ for (k in knobs) k.uninit();
 		/* end loop */ Lib.current.stage.removeEventListener(Event.ENTER_FRAME, frame);
 	}
 	
@@ -303,6 +348,14 @@ class Snowbody implements MulticartGame
 		headbmp.bitmapData.copyPixels(ib, new Rectangle(w,0.,w,h), new Point(0., 0.), null, null, true);
 		armbmp.bitmapData.copyPixels(ib, new Rectangle(0.,h,w,h), new Point(0., 0.), null, null, true);
 		flakebmp.bitmapData.copyPixels(ib, new Rectangle(w, h, w, h), new Point(0., 0.), null, null, true);
+	}
+	
+	public function onClicker(event : MouseEvent)
+	{
+		for (k in knobs)
+		{
+			if (k.vg) k.onMouse(event);
+		}
 	}
 	
 }

@@ -5,10 +5,10 @@ class T /*toolbox*/
 	
 	public static inline function lerp(r0 : Float, r1 : Float, z : Float) { return (r0 + (r1 - r0) * z); }
 	
-	public static inline function lscale(l0 : Float, h0 : Float, l1 : Float, h1 : Float, z0 : Float)
+	public static inline function lscale(l0 : Float, h0 : Float, l1 : Float, h1 : Float, z0 : Float) : Float
 	/* map a variable z0 from a linear interpolation of [l0, h0] into an interpolation of [l1,h1]. */
 	{
-		return (/*offset0*/(z0 - l0) * /*scale*/((/*d0*/h1 - l1)/(/*d1*/h0 - l0)) + l1/*offset1*/;
+		return (/*offset0*/(z0 - l0) * /*scale*/((/*d0*/h1 - l1)/(/*d1*/h0 - l0)) + l1/*offset1*/);
 	}
 	
 	public static inline function rdiff /*rotational diff between [0,lim)*/ (r0 : Float, r1 : Float, lim : Float)
@@ -57,5 +57,7 @@ class T /*toolbox*/
 	{ var k = z * (a.length - 1); var i = Std.int(k); return lerp(a[i], a[i + 1], k - i); }
 	
 	public static inline function trunc /* truncate float to the amount rounded by the divisor */ (a : Float, div : Float) { return Math.round(a * div) / div; }
+	
+	public static inline function clamp(l : Float, h : Float, v : Float) { return Math.min(h, Math.max(l, v)); }
 	
 }
