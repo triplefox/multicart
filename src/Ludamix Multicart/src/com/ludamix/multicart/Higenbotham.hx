@@ -69,8 +69,8 @@ class Higenbotham implements MulticartGame
 			inp.tfloat(ball.v, "y", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "t1", "Ball Y Vel", false);
 			inp.tfloat(this, "angleL", RangeMapping.neg( -Math.PI / 2 + 0.03, Math.PI / 2 - 0.03, 1., 0.), 0., "p0horiz", "Player 1 Angle", true);
 			inp.tfloat(this, "angleR", RangeMapping.neg( -Math.PI * 3 / 2 + 0.03, -Math.PI / 2 - 0.03, 1., 0.), 0., "p1horiz", "Player 2 Angle", true);
-			inp.tbool(this, "hitL", false, "p0b1tap", "Player 1 Hit Ball");
-			inp.tbool(this, "hitR", false, "p1b1tap", "Player 2 Hit Ball");
+			inp.tbool(this, "hitL", false, "p0b0tap", "Player 1 Hit Ball");
+			inp.tbool(this, "hitR", false, "p1b0tap", "Player 2 Hit Ball");
 			inp.check(); if (inp.warn_t.length > 0) trace(inp.warn_t);
 		}
 		{ /* start audio */ Main.beeper.start(); 

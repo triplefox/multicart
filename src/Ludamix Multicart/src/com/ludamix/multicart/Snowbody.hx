@@ -3,7 +3,9 @@ import com.ludamix.multicart.d.Beeper;
 import com.ludamix.multicart.d.InputConfig;
 import com.ludamix.multicart.d.Proportion;
 import com.ludamix.multicart.d.RangeMapping;
+import com.ludamix.multicart.d.T;
 import haxe.ds.Vector;
+import lime.utils.Float32Array;
 import openfl.geom.ColorTransform;
 import openfl.geom.Matrix;
 import openfl.geom.Point;
@@ -20,12 +22,16 @@ import com.ludamix.multicart.d.Vec2F;
 
 	Digital Snowbody Game
 	
-	Task 1. Multi-part snowperson body rendering - rotozoomed bitmaps, I suppose
 	Task 2. Introduce knobs to scale and skew things
-	Task 3. Add animation things, export tools
+	Task 3. Get away from the perlin noise placeholders somehow (maybe a thing to generate the bitmaps)
 	Task 4. Dump more stuff on (bitmap distort, bg color change, snowflake fx, etc.)
+	Task 5. Export functionality...
 	
 */
+
+typedef SpineVec = { p:Vec2F, r/*radians*/:Float, m/*magnitude*/:Float };
+typedef Snowpart = { p/*position*/:Vec2F, v/*velocity*/:Vec2F, r/*radians*/:Float, rv/*radial velocity*/:Float, b/*bitmap*/:Int, 
+	sw/*scale width*/:Float, sh/*scale height*/:Float };
 
 class Snowbody implements MulticartGame
 {
@@ -36,18 +42,6 @@ class Snowbody implements MulticartGame
 	public var disp /* main display */ : Sprite;
 	public var pfs /* playfield sprite */ : Bitmap;
 	
-	/*first ball origin*/ 
-	public var snox : Float;
-	public var snoy : Float;
-	public var snow : Float;
-	public var snoh : Float;
-	/*offsets added per ball*/
-	public var snax : Float;
-	public var snay : Float;
-	public var snaw : Float;
-	public var snah : Float;
-	public var bc /*count of balls*/ : Int;
-	
 	public var fe /*frames elapsed since start*/ : Int;
 	public var ldt /*last delta time*/ : Float;
 	public var mdt /*mean delta time*/ : Float;
@@ -57,11 +51,48 @@ class Snowbody implements MulticartGame
 	public var armbmp /*arm base bitmap*/ : Bitmap;
 	public var flakebmp /*snowflake base bitmap*/ : Bitmap;
 	
+	public var parts : Array<Snowpart>;
+	
 	public var beep_gain : Vector<Float>; /* beeper gain */
 	public var beep_freq : Array<Vector<Float>>; /* beeper freq */
 	
+	public var dir : Vec2F; /*temporary for direction*/
+	
+	public var explosion_damp : Float;
+	
+	/* inputs */
+	public var trigger_explosion : Bool;
+	
+	/* constants */
+	
 	public static inline var PW /* playfield width */ = 256;
 	public static inline var PH /* playfield height */ = 256;
+	
+	/* mapping of body parts to bitmaps */
+	public static inline var PTBALL = 0;
+	public static inline var PTHEAD = 1;
+	public static inline var PTARM = 2;
+	public static inline var PTFLAKE = 3;
+	
+	/* mapping of body parts to Snowpart instances */
+	public static inline var SPLEG = 0;
+	public static inline var SPCHEST = 1;
+	public static inline var SPHEAD = 2;
+	public static inline var SPARML = 3;
+	public static inline var SPARMR = 4;
+	
+	private inline function lerpsv/*lerp SpineVec*/(a : SpineVec, b : SpineVec, z : Float) { 
+		var p = Vec2F.c(0., 0.); p.lerp(a.p, b.p, z);
+		var m = T.lerp(a.m, b.m, z);
+		var r = T.lerpRad(a.r, b.r, z);
+		return { p:p, m:m, r:r };
+	}
+	private inline function perpsv/*perpendicular of SpineVec*/(a : SpineVec) { 
+		var p = a.p.clone();
+		var m = a.m;
+		var TAU = Math.PI * 2; var r = (a.r + Math.PI/2) % TAU;
+		return { p:p, m:m, r:r };
+	}
 	
 	public function start(inp : InputConfig)
 	{
@@ -69,21 +100,153 @@ class Snowbody implements MulticartGame
 		{ /* init playfield */ pfs = new Bitmap(new BitmapData(PW, PH)); disp.addChild(pfs); }
 		{ /* init bitmaps */ var b = new BitmapData(256, 256, true, 0); b.perlinNoise(10., 10., 4, 0, false, true); bslice(b); }
 		{ /* init timers */ fe = 0; ldt = Lib.getTimer(); mdt = 0.; }
+		{ /* init parameter values */ 
+			/*
+			 * Spine description
+			 * 
+			 * total height
+			 * 
+			 * curvature function - trigonometric and iterative
+			 * we compute 128 points using an angle-power metric
+			 * then we sample from the points to generate the actual spine
+			 * we can lerp from these points if needed...
+			 * 
+			 * this allows height to be preserved and also provides us with rotation values.
+			 * 
+			 * for arms, we also take a sample and then walk along the perpendiculars.
+			 * so for this we need to do a decent amount of vector math
+			 * 
+			 * After doing this we draw directly from the samples.
+			 * 
+			 * Then we introduce state for each body part and lerp in.
+			 * Oh...we will need rotational lerp anyway. Fuckit!
+			 * 
+			 * What we end up needing is cartesian vectors combined with angle-power indicators.
+			 * 
+			 * 
+			 * */
+			 
+			// in that case we store some offset values in the code, as consts, and iterate over the set of initial offsets, scales,
+			// bitmap types, etc.
+			// more about animating, than it is about the distortion - we can ofc. perform distorts on the bitmap.
+			
+			// snowflakes get to be the special case since we do have reasons to make them more or less dense
+			dir = Vec2F.c(0., 0.);
+			parts = [];
+			parts[SPLEG] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0., rv:0., b:PTBALL, sw:1., sh:1. };
+			parts[SPCHEST] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTBALL, sw:0.7, sh:0.7 };
+			parts[SPHEAD] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTHEAD, sw:0.5, sh:0.5 };
+			parts[SPARML] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTARM, sw:0.5, sh:0.5 };
+			parts[SPARMR] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTARM, sw:0.5, sh:0.5 };
+			for (p in parts) { p.p.x = Math.random() * PW; p.p.y = Math.random() * PH; p.r = Math.random() * Math.PI * 2; }
+		}
+		{ /* special effects parameters */
+			explosion_damp = 0.;
+		}
 		{ /* configure input */ this.inp = inp;
 			inp.check(); if (inp.warn_t.length > 0) trace(inp.warn_t);
-		}
-		{ /* start audio */ Main.beeper.start(); 
-			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440.]), Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 220.])];
-			beep_gain = Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) if (i < Beeper.CK_SIZE / 4) 1. -i / (Beeper.CK_SIZE / 4) else 0.]); 
+			inp.tbool(this, "trigger_explosion", false, 'p0b0tap', 'Explode');
 		}
 		{ /* start loop */ Lib.current.stage.addEventListener(Event.ENTER_FRAME, frame); }
+	}
+	
+	private inline function grc /*generate render command*/(bi : Int, xs : Float, ys : Float, r : Float, xt : Float, yt : Float,
+		r0 : Float, g0 : Float, b0 : Float, a0 : Float, r1 : Float, g1 : Float, b1 : Float, a1 : Float) : Array<Float>
+	{
+		return [bi /*bitmap index*/, xs/*x scale*/, ys/*y scale*/, r/*rotation(0-1)*/, xt/*x translate*/, yt/*y translate*/, 
+			r0/*red mult*/, g0/*green mult*/, b0/*blue mult*/, a0/*alpha mult*/, r1/*red add*/, g1/*green add*/, b1/*blue add*/, a1/*alpha add*/];
+	}
+	
+	private inline function gdc /*generate debug command*/(x : Float, y : Float) { return [x, y]; }
+	
+	private function renderSpine(spine : Array<SpineVec>, POINTS : Int, ba : Array<Array<Float>>, ra : Array<Array<Float>>,
+		rinc : Float, /* increment r per */
+		minc : Float, /* increment m per */
+		rsamp : Float, /* cos r amplitude */
+		rsoff : Float, /* cos r offset */
+		msamp : Float, /* cos m amplitude */
+		msoff : Float /* cos m offset */
+	)
+	{
+		var TAU = Math.PI * 2;
+		var cur : SpineVec = spine[0]; var cr = cur.r; var cm = cur.m;
+		for (i in 0...POINTS) /* create spine samples */
+		{
+			var pct = i / POINTS;
+			var rampf /* r amp frame */ = Math.cos((pct + rsoff) * TAU) * rsamp;
+			var mampf /* m amp frame */ = Math.cos((pct + msoff) * TAU) * msamp;
+			var next = { p:cur.p.clone(), m:cm + mampf, r:cr + rampf };
+			dir.ofRadmul(next.r, next.m); next.p.addf(dir);
+			cr += rinc; cm += minc;
+			spine.push(next); cur = next;
+		}
+		for (n in spine)
+		{
+			ba.push(gdc(n.p.x, n.p.y));
+		}
+	}
+	
+	private function simPart(pt : Snowpart, p : Vec2F, r : Float)
+	{
+		{ /* add spring forces */
+			var POS_RATE = 0.02 * ( 1 - explosion_damp );
+			var ROT_RATE = 0.01 * ( 1 - explosion_damp );
+			var v = Vec2F.c(0., 0.); v.diff(pt.p, p, POS_RATE); pt.v.addf(v);
+			pt.rv += T.diffRad(pt.r, r) * ROT_RATE;
+		}
+		{ /* add velocity */
+			pt.p.addf(pt.v);
+			pt.r = (pt.r + pt.rv) % (Math.PI * 2);
+		}
+		{ /* apply friction */
+			var FRICT_RATE = 0.5;
+			pt.v.mulf(Vec2F.c(FRICT_RATE, FRICT_RATE));
+			pt.rv *= FRICT_RATE;
+		}
 	}
 	
 	public function frame(ev : Event)
 	{
 		{ /* update inputs and refresh tuning */ inp.poll();
+			if (trigger_explosion)
+			{
+				for (p in parts) { 
+					p.v.ofRadmul(Math.random() * Math.PI * 2, Math.random() * 50 + 50); 
+					p.rv = Math.random() * 100 - 50; }
+				explosion_damp = 1.;
+			}
+			trigger_explosion = false;
 		}
+		var ra /*render command array*/ = new Array<Array<Float>>();
+		var ba /*debug point array*/ = new Array<Array<Float>>();
 		{ /* simulate */
+		
+			var body = new Array<SpineVec>(); body.push({p:Vec2F.c(PW*0.5,PH*0.95),r:-Math.PI/2,m:1.5});
+			
+			renderSpine(body, 128, ba, ra, 0., 0., 0.5, fe/100, 0., fe/50);
+			var samples = [for (i in [0.05, 0.5, 0.95]) T.sample(body, i)];
+			
+			simPart(parts[SPLEG], samples[0].p, samples[0].r);
+			simPart(parts[SPCHEST], samples[1].p, samples[1].r);
+			simPart(parts[SPHEAD], samples[2].p, samples[2].r);
+			
+			var armr = [perpsv(T.sample(body, 0.5))]; armr[0].m = 0.8;
+			renderSpine(armr, 128, ba, ra, 0., 0., 0.1, fe/100, 0., fe/50);
+			var arml = [{m:armr[0].m,r:armr[0].r+Math.PI,p:armr[0].p.clone()}];
+			renderSpine(arml, 128, ba, ra, 0., 0., 0.1, fe/100, 0., fe/50);
+			
+			var arms = T.sample(armr, 0.8); simPart(parts[SPARMR], arms.p, arms.r);
+			var arms = T.sample(arml, 0.8); simPart(parts[SPARML], arms.p, arms.r);
+			
+			for (p in parts)
+			{
+				ra.push(grc(p.b, p.sw, p.sh, p.r, p.p.x, p.p.y, 1., 1., 1., 1., 0., 0., 0., 0.));
+			}
+			
+			explosion_damp = Math.max(0., explosion_damp * 0.99);
+			
+			//ra.push(grc(0, 0.05, 0.05, n.r, n.p.x, n.p.y, 1., 1., 1., 1., 0., 0., 0., 0.));
+			//ra.push(grc(0, sncw, snch, 0., sncx, sncy, 1., 1., 1., 1., 0., 0., 0., 0.));
 		}
 		{ /* render */
 			/* common parameters */
@@ -98,22 +261,22 @@ class Snowbody implements MulticartGame
 				pfs.scaleY = sc; pfs.y = sh / 2 - PH*sc / 2;
 			}
 			{ /* draw the playfield */
+				pfs.bitmapData.lock();
 				pfs.bitmapData.fillRect(pfs.bitmapData.rect, 0xFF000000);
 				var m = new Matrix();
-				var d /*draw rotozoomed, colored bitmap*/ = function(bi : Int, xs : Float, ys : Float, r : Float, xt : Float, yt : Float,
-					r0:Float, g0:Float, b0:Float, a0:Float, r1:Float, g1:Float, b1:Float, a1:Float) {
-					var b = [ballbmp,headbmp,armbmp,flakebmp][bi];	
-					m.identity(); m.translate( -b.width / 2, -b.height / 2); m.scale(xs, ys); m.rotate(r * Math.PI * 2.); m.translate(xt, yt);
+				for (n in ra) /* draw scaled, rotozoomed, colored bitmaps */
+				{
+					var bi = Std.int(n[0]); var xs = n[1]; var ys = n[2]; var r = n[3]; var xt = n[4]; var yt = n[5];
+					var r0 = n[6]; var g0 = n[7]; var b0 = n[8]; var a0 = n[9]; var r1 = n[10]; var g1 = n[11]; var b1 = n[12]; var a1 = n[13];
+					var b = [ballbmp,headbmp,armbmp,flakebmp][bi];
+					m.identity(); m.translate( -b.width / 2, -b.height / 2); m.scale(xs, ys); m.rotate(r); m.translate(xt, yt);
 					pfs.bitmapData.draw(b, m, new ColorTransform(r0, g0, b0, a0, r1*255, g1*255, b1*255, a1*255));
 				}
-				d(0, 0.5 + (fe / 100) % 1., 1., fe / 100, 128, 128, 1., 1., 1., 1., 0., 0., 0., 0.);
-				d(0, 1., 0.5 + (fe / 100) % 1., fe / 100, 0, 128, 1., 1., 1., 1., (fe / 100) % 1, 0., 0., 0.);
-				// ok, we're into the troublesome part now.
-				// we have a model for displaying things...
-				// but now we need to create and tune the actual synthesis algorithms
-				// presumably we buffer up the data...
-				// since we've reduced it to a "bunch of numbers" this isn't terribly hard.
-				// but i will have to draw some actual art and put that in to know the default look and feel of the snowperson.
+				for (n in ba)
+				{
+					pfs.bitmapData.setPixel32(Math.round(n[0]), Math.round(n[1]), 0xFFFFFFFF);
+				}
+				pfs.bitmapData.unlock();
 			}
 		}
 		{ /* end tick */
@@ -126,7 +289,6 @@ class Snowbody implements MulticartGame
 	public function exit()
 	{
 		/* remove display */ Lib.current.stage.removeChild(disp);
-		/* stop audio */ Main.beeper.stop();
 		/* end loop */ Lib.current.stage.removeEventListener(Event.ENTER_FRAME, frame);
 	}
 	
