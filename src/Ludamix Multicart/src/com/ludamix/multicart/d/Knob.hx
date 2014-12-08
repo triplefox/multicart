@@ -28,7 +28,7 @@ class Knob extends Sprite
 		super(); this.radius = circumference / 2; this.vf = vf; this.vd = vd; va = 0.; vv = 0.; vg = false;
 		this.gs = gs;
 		this.tuner = tuner;
-		for (n in [MouseEvent.MOUSE_MOVE, MouseEvent.CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP])
+		for (n in [MouseEvent.MOUSE_MOVE, MouseEvent.CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP, MouseEvent.RELEASE_OUTSIDE])
 			this.addEventListener(n, function(ev) { if (!vg) onMouse(ev); } ); /* allow top level to pass in events when grabbing */
 		if (_pts == null) init();
 		render();
@@ -36,7 +36,7 @@ class Knob extends Sprite
 	
 	public function uninit()
 	{
-		for (n in [MouseEvent.MOUSE_MOVE, MouseEvent.CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP])
+		for (n in [MouseEvent.MOUSE_MOVE, MouseEvent.CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP,MouseEvent.RELEASE_OUTSIDE])
 			this.removeEventListener(n, onMouse);		
 	}
 	

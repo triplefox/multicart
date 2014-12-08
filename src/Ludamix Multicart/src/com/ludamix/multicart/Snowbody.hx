@@ -28,34 +28,35 @@ import com.ludamix.multicart.d.Vec2F;
 	
 	Task 4. Dump more stuff on (bitmap distort, bg color change, snowflake fx, etc.)
 
-		We need to do some knob layout...
-		...I guess just keep the knob look and feel the same everywhere.
-
 		Categories
-			Parts scaling
-			Coloring options
-			Effects options
+			Effects options	
+			Sample point adjustments
+			Bg adjust
 			
-		Current status: body_s and arm_s exist and need a few more parameters(initial magnitudes/offsets), and they need knobs assigned.
-		
-		And then add the color and fx and some buttons to reset things.
+			Resets for: spines, flakes, colors and scale
+			Import image
+			(do as button inputs?)
+			
+			Colorize knobs by group?
 		
 	Task 5. Export functionality...
 	
 */
 
+typedef ColorConfig = { rm:Float, gm:Float, bm:Float, am:Float, ro:Float, go:Float, bo:Float, ao:Float };
 typedef SpineVec = { p:Vec2F, r/*radians*/:Float, m/*magnitude*/:Float };
 typedef Snowpart = { p/*position*/:Vec2F, v/*velocity*/:Vec2F, r/*radians*/:Float, rv/*radial velocity*/:Float, b/*bitmap*/:Int, 
-	sw/*scale width*/:Float, sh/*scale height*/:Float };
-
-typedef Snowflake = { p/*position*/:Vec2F, r/*radians*/:Float, sw/*scale width*/:Float, sh/*scale height*/:Float };
-
+	sw/*scale width*/:Float, sh/*scale height*/:Float, col : ColorConfig };
+	
 typedef SpineConfig = { rinc : Float, /* increment r per */ 
 		minc : Float, /* increment m per */ 
 		rsamp : Float, /* cos r amplitude */
 		rsoff : Float, /* cos r offset */ 
 		msamp : Float, /* cos m amplitude */ 
-		msoff : Float /* cos m offset */
+		msoff : Float, /* cos m offset */
+		ipx : Float, /* initial x offset */
+		ipy : Float, /* initial y offset */
+		ir : Float, /* initial radians */
 };
 
 class Snowbody implements MulticartGame
@@ -78,9 +79,7 @@ class Snowbody implements MulticartGame
 	public var flakebmp /*snowflake base bitmap*/ : Bitmap;
 	
 	public var parts : Array<Snowpart>;
-
-	public var beep_gain : Vector<Float>; /* beeper gain */
-	public var beep_freq : Array<Vector<Float>>; /* beeper freq */
+	public var flakecolors : ColorConfig;
 	
 	public var dir : Vec2F; /*temporary for direction*/
 	
@@ -103,7 +102,7 @@ class Snowbody implements MulticartGame
 	
 	/* inputs */
 	public var trigger_explosion : Bool;
-	
+	public var draw_debug : Bool;
 	
 	/* constants */
 	
@@ -141,51 +140,38 @@ class Snowbody implements MulticartGame
 		{ /* init display */ disp = new Sprite(); Lib.current.stage.addChild(disp); }
 		{ /* init playfield */ pfs = new Bitmap(new BitmapData(PW, PH)); disp.addChild(pfs); }
 		{ /* init clicker */ clicker = new Sprite(); disp.addChild(clicker); 
-			for (e in [MouseEvent.CLICK, MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP])
-				clicker.addEventListener(e, onClicker);
 			var g = clicker.graphics; g.beginFill(0, 0.); g.drawRect(0., 0., Lib.current.stage.width, Lib.current.stage.height); g.endFill();
+			clicker.mouseEnabled = true; clicker.mouseChildren = true;
+			for (e in [MouseEvent.CLICK, MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP,
+			MouseEvent.MOUSE_OVER, MouseEvent.MOUSE_OUT, MouseEvent.RELEASE_OUTSIDE])
+				Lib.current.stage.addEventListener(e, onClicker);
 		}
-		{ /* init bitmaps */ var b = new BitmapData(256, 256, true, 0); b.perlinNoise(10., 10., 4, 0, false, true); bslice(b); }
+		{ /* init bitmaps */ var b = Assets.getBitmapData("img/snowbody/texture.png"); bslice(b); }
 		{ /* init timers */ fe = 0; ldt = Lib.getTimer(); mdt = 0.; }
 		{ /* init parameter values */ 
 			/*
 			 * Spine description
 			 * 
-			 * total height
+			 * preserve a "total height" so that spine feels natural
 			 * 
 			 * curvature function - trigonometric and iterative
 			 * we compute 128 points using an angle-power metric
 			 * then we sample from the points to generate the actual spine
-			 * we can lerp from these points if needed...
-			 * 
 			 * this allows height to be preserved and also provides us with rotation values.
-			 * 
 			 * for arms, we also take a sample and then walk along the perpendiculars.
-			 * so for this we need to do a decent amount of vector math
-			 * 
-			 * After doing this we draw directly from the samples.
-			 * 
-			 * Then we introduce state for each body part and lerp in.
-			 * Oh...we will need rotational lerp anyway. Fuckit!
-			 * 
-			 * What we end up needing is cartesian vectors combined with angle-power indicators.
-			 * 
+			 * After doing this we introduce state for each body part and lerp into the sample points.
 			 * 
 			 * */
-			 
-			// in that case we store some offset values in the code, as consts, and iterate over the set of initial offsets, scales,
-			// bitmap types, etc.
-			// more about animating, than it is about the distortion - we can ofc. perform distorts on the bitmap.
-			
-			// snowflakes get to be the special case since we do have reasons to make them more or less dense
 			dir = Vec2F.c(0., 0.);
 			parts = [];
-			parts[SPLEG] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0., rv:0., b:PTBALL, sw:1., sh:1. };
-			parts[SPCHEST] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTBALL, sw:0.7, sh:0.7 };
-			parts[SPHEAD] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTHEAD, sw:0.5, sh:0.5 };
-			parts[SPARML] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTARM, sw:0.5, sh:0.5 };
-			parts[SPARMR] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTARM, sw:0.5, sh:0.5 };
-			for (p in parts) { p.p.x = Math.random() * PW; p.p.y = Math.random() * PH; p.r = Math.random() * Math.PI * 2; }
+			parts[SPLEG] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0., rv:0., b:PTBALL, sw:1., sh:1., col:null };
+			parts[SPCHEST] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTBALL, sw:0.7, sh:0.7, col:null };
+			parts[SPHEAD] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTHEAD, sw:0.5, sh:0.5, col:null };
+			parts[SPARML] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTARM, sw:0.5, sh:0.5, col:null };
+			parts[SPARMR] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTARM, sw:0.5, sh:0.5, col:null };
+			for (p in parts) { p.p.x = Math.random() * PW; p.p.y = Math.random() * PH; p.r = Math.random() * Math.PI * 2; 
+				p.col = { rm:1., gm:1., bm:1., am:1., ro:0., go:0., bo:0., ao:0. };
+			}
 			
 			sfp = {/*tile width and height*/ TW : 64, TH : 64,
 			/*rotation velocity*/ RV : 0.02,
@@ -201,16 +187,22 @@ class Snowbody implements MulticartGame
 					rsamp : 0.5, /* cos r amplitude */
 					rsoff : 1/100, /* cos r offset */ 
 					msamp : 0., /* cos m amplitude */ 
-					msoff : 1/50/* cos m offset */
+					msoff : 1/50, /* cos m offset */
+					ipx : 0.,
+					ipy : 0.,
+					ir : 0.
 			};
 			arm_s = { rinc : 0., /* increment r per */ 
 					minc : 0., /* increment m per */ 
 					rsamp : 0.5, /* cos r amplitude */
 					rsoff : 1/100, /* cos r offset */ 
 					msamp : 0., /* cos m amplitude */ 
-					msoff : 1/50/* cos m offset */
+					msoff : 1/50, /* cos m offset */
+					ipx : 0.,
+					ipy : 0.,
+					ir : 0.
 			};
-			
+			flakecolors = {rm:1.,gm:1.,bm:1.,am:1.,ro:0.,go:0.,bo:0.,ao:0.};
 		}
 		{ /* special effects parameters */
 			explosion_damp = 0.;
@@ -230,23 +222,52 @@ class Snowbody implements MulticartGame
 				Tuner.makeFloat(sfp, "PDY", RangeMapping.pos(0., 128, 1 / 4, 0.5), 0.5, "", "", true),
 				Tuner.makeFloat(sfp, "RV", RangeMapping.pos(0., 1., 1 / 4, 0.02), 0.02, "", "", true),
 			];
-			for (sc in [body_s, arm_s])
+			for (a in [body_s, arm_s])
 			{
 				tuners = tuners.concat([
-					Tuner.makeFloat(sc, "rinc", RangeMapping.neg(-Math.PI*2, Math.PI*2, 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(sc, "minc", RangeMapping.neg(-3., 3., 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(sc, "rsamp", RangeMapping.neg(-10, 10., 1/4, 0.5), 0.5, "", "", true),
-					Tuner.makeFloat(sc, "rsoff", RangeMapping.pos(0.0001, 4., 1/4, 1/100), 1/100, "", "", true),
-					Tuner.makeFloat(sc, "msamp", RangeMapping.neg(-10, 10., 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(sc, "msoff", RangeMapping.pos(0.0001, 4., 1/4, 1/50), 1/50, "", "", true),
+					Tuner.makeFloat(a, "rinc", RangeMapping.neg(-Math.PI*2, Math.PI*2, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(a, "minc", RangeMapping.neg(-3., 3., 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(a, "rsamp", RangeMapping.neg(-10, 10., 1/4, 0.5), 0.5, "", "", true),
+					Tuner.makeFloat(a, "rsoff", RangeMapping.pos(0.0001, 4., 1/4, 1/100), 1/100, "", "", true),
+					Tuner.makeFloat(a, "msamp", RangeMapping.neg(-10, 10., 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(a, "msoff", RangeMapping.pos(0.0001, 4., 1/4, 1/50), 1/50, "", "", true),
+					Tuner.makeFloat(a, "ipx", RangeMapping.neg(-256, 256, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(a, "ipy", RangeMapping.neg(-256, 256, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(a, "ir", RangeMapping.neg(-Math.PI, Math.PI, 1., 0.), 0., "", "", true),
 				]);
 			}
+			for (a in parts)
+			{
+				tuners = tuners.concat([
+					Tuner.makeFloat(a, "sw", RangeMapping.pos(0.001, 8, 1/4, 1.), 1., "", "", true),
+					Tuner.makeFloat(a, "sh", RangeMapping.pos(0.001, 8, 1/4, 1.), 1., "", "", true),
+					Tuner.makeFloat(a.col, "rm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
+					Tuner.makeFloat(a.col, "gm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
+					Tuner.makeFloat(a.col, "bm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
+					Tuner.makeFloat(a.col, "am", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
+					Tuner.makeFloat(a.col, "ro", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(a.col, "go", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(a.col, "bo", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(a.col, "ao", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
+				]);
+			}
+			tuners = tuners.concat([
+					Tuner.makeFloat(flakecolors, "rm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
+					Tuner.makeFloat(flakecolors, "gm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
+					Tuner.makeFloat(flakecolors, "bm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
+					Tuner.makeFloat(flakecolors, "am", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
+					Tuner.makeFloat(flakecolors, "ro", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(flakecolors, "go", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(flakecolors, "bo", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(flakecolors, "ao", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),			
+			]);
 			knobs = [for (t in tuners) new Knob(32., t)];
 			for (k in knobs) { clicker.addChild(k); }
 		}
 		{ /* configure input */ this.inp = inp;
 			inp.check(); if (inp.warn_t.length > 0) trace(inp.warn_t);
 			inp.tbool(this, "trigger_explosion", false, 'p0b0tap', 'Explode');
+			inp.tbool(this, "draw_debug", false, 'p0b1hold', 'Draw Debug Infos');
 		}
 		{ /* start loop */ Lib.current.stage.addEventListener(Event.ENTER_FRAME, frame); }
 	}
@@ -266,11 +287,15 @@ class Snowbody implements MulticartGame
 		rsamp : Float, /* cos r amplitude */
 		rsoff : Float, /* cos r offset */
 		msamp : Float, /* cos m amplitude */
-		msoff : Float /* cos m offset */
+		msoff : Float, /* cos m offset */
+		ipx : Float,
+		ipy : Float,
+		ir : Float
 	)
 	{
 		var TAU = Math.PI * 2;
-		var cur : SpineVec = spine[0]; var cr = cur.r; var cm = cur.m;
+		var cur : SpineVec = spine[0]; var cm = cur.m; cur.p.x += ipx; cur.p.y += ipy; cur.r += ir;
+		var cr = cur.r; 
 		for (i in 0...POINTS) /* create spine samples */
 		{
 			var pct = i / POINTS;
@@ -281,10 +306,13 @@ class Snowbody implements MulticartGame
 			cr += rinc; cm += minc;
 			spine.push(next); cur = next;
 		}
-		//for (n in spine) /* debug draw */
-		//{
-			//ba.push(gdc(n.p.x, n.p.y));
-		//}
+		if (draw_debug)
+		{
+			for (n in spine) /* debug draw */
+			{
+				ba.push(gdc(n.p.x, n.p.y));
+			}
+		}
 	}
 	
 	public function frame(ev : Event)
@@ -299,9 +327,13 @@ class Snowbody implements MulticartGame
 			}
 			trigger_explosion = false;
 			{ // layout knobs at stage left and right
-				var lx = 0.; var ly = 0.; var bx = 0.;
+				var lx = 0.; var ly = 0.; var bx = 0.; var wlim = pfs.x;
 				for (k in knobs) { k.x = lx; k.y = ly; lx += k.width+1; 
-					if (lx + k.width+1 > pfs.x) { ly += k.height+1; if (ly > Lib.current.stage.stageHeight) { bx = pfs.x + pfs.width; } lx = bx; } }
+					if (lx + k.width + 1 > wlim) { 
+						ly += k.height + 1; 
+						if (ly + k.height + 1 > Lib.current.stage.stageHeight) { bx = pfs.x + pfs.width; ly = 0; wlim = Lib.current.stage.stageWidth; } 
+						lx = bx; } 
+					}
 			}
 			for (k in knobs) { if (!k.vg && k.tuner.refresh()) k.dirty = true; k.render(); }
 		}
@@ -322,9 +354,11 @@ class Snowbody implements MulticartGame
 				bx = (bx + Math.sin(fe * GF) * GM);
 				var x = bx; var y = by;
 				var r = (fe * RV) % (Math.PI * 2);
+				var rm = flakecolors.rm; var gm = flakecolors.gm; var bm = flakecolors.bm; var am = flakecolors.am;
+				var ro = flakecolors.ro; var go = flakecolors.go; var bo = flakecolors.bo; var ao = flakecolors.ao;
 				while (y < PH + TH)
 				{
-					ra.push(grc(PTFLAKE, FW, FH, r, x, y + Math.sin((y*FX-x*FY))*FS, 1., 1., 1., 1., 0., 0., 0., 0.));
+					ra.push(grc(PTFLAKE, FW, FH, r, x, y + Math.sin((y*FX-x*FY))*FS, rm, gm, bm, am, ro, go, bo, ao));
 					x += TW; if (x > PW + TW) { x = bx % TW; y += TH; }
 				}
 			}
@@ -333,12 +367,15 @@ class Snowbody implements MulticartGame
 			var body = new Array<SpineVec>(); body.push({p:Vec2F.c(PW*0.5,PH*0.95),r:-Math.PI/2,m:1.5});
 			
 			/* render and sample spines */
-			renderSpine(body, 128, ba, ra, body_s.rinc, body_s.minc, body_s.rsamp, fe*body_s.rsoff, body_s.msamp, fe*body_s.msoff);
+			renderSpine(body, 128, ba, ra, body_s.rinc, body_s.minc, body_s.rsamp, fe * body_s.rsoff, body_s.msamp, fe * body_s.msoff,
+				body_s.ipx, body_s.ipy, body_s.ir);
 			var samples = [for (i in [0.05, 0.5, 0.95]) T.sample(body, i)];
 			var armr = [perpsv(T.sample(body, 0.5))]; armr[0].m = 0.8;
 			var arml = [{m:armr[0].m,r:armr[0].r+Math.PI,p:armr[0].p.clone()}];
-			renderSpine(armr, 128, ba, ra, arm_s.rinc, arm_s.minc, arm_s.rsamp, fe*arm_s.rsoff, arm_s.msamp, fe*arm_s.msoff);
-			renderSpine(arml, 128, ba, ra, arm_s.rinc, arm_s.minc, arm_s.rsamp, fe*arm_s.rsoff, arm_s.msamp, fe*arm_s.msoff);
+			renderSpine(armr, 128, ba, ra, arm_s.rinc, arm_s.minc, arm_s.rsamp, fe * arm_s.rsoff, arm_s.msamp, fe * arm_s.msoff,
+				arm_s.ipx, arm_s.ipy, arm_s.ir);
+			renderSpine(arml, 128, ba, ra, arm_s.rinc, arm_s.minc, arm_s.rsamp, fe * arm_s.rsoff, arm_s.msamp, fe * arm_s.msoff,
+				-arm_s.ipx, -arm_s.ipy, -arm_s.ir);
 			samples.push(T.sample(armr, 0.8));
 			samples.push(T.sample(arml, 0.8));
 			
@@ -348,8 +385,8 @@ class Snowbody implements MulticartGame
 				{
 					var pt = parts[pi]; var p = samples[i].p; var r = samples[i].r;
 					{ /* add spring forces */
-						var POS_RATE = 0.02 * ( 1 - explosion_damp );
-						var ROT_RATE = 0.01 * ( 1 - explosion_damp );
+						var POS_RATE = 0.05 * ( 1 - explosion_damp );
+						var ROT_RATE = 0.025 * ( 1 - explosion_damp );
 						var v = Vec2F.c(0., 0.); v.diff(pt.p, p, POS_RATE); pt.v.addf(v);
 						pt.rv += T.diffRad(pt.r, r) * ROT_RATE;
 					}
@@ -368,7 +405,7 @@ class Snowbody implements MulticartGame
 			
 			for (p in parts) /* render graphics data */
 			{
-				ra.push(grc(p.b, p.sw, p.sh, p.r, p.p.x, p.p.y, 1., 1., 1., 1., 0., 0., 0., 0.));
+				ra.push(grc(p.b, p.sw, p.sh, p.r, p.p.x, p.p.y, p.col.rm, p.col.gm, p.col.bm, p.col.am, p.col.ro, p.col.go, p.col.bo, p.col.ao));
 			}
 			
 			explosion_damp = Math.max(0., explosion_damp * 0.99);
@@ -376,7 +413,7 @@ class Snowbody implements MulticartGame
 		}
 		{ /* render */
 			/* common parameters */
-			var bg = 0xFF990099;
+			var bg = 0xFF222222;
 			{ /* draw the background and position the playfield */
 				var sw = Lib.current.stage.stageWidth; var sh = Lib.current.stage.stageHeight;
 				var g = disp.graphics; g.clear(); 
@@ -400,7 +437,7 @@ class Snowbody implements MulticartGame
 				}
 				for (n in ba)
 				{
-					pfs.bitmapData.setPixel32(Math.round(n[0]), Math.round(n[1]), 0xFFFFFFFF);
+					pfs.bitmapData.setPixel32(Math.round(n[0]), Math.round(n[1]), 0xFFFF8888);
 				}
 				pfs.bitmapData.unlock();
 			}
@@ -415,15 +452,15 @@ class Snowbody implements MulticartGame
 	public function exit()
 	{
 		/* remove display */ Lib.current.stage.removeChild(disp);
-		/* remove clicker */ for (e in [MouseEvent.CLICK, MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP])
-			clicker.removeEventListener(e, onClicker);
+		/* remove clicker */ for (e in [MouseEvent.CLICK, MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP,
+			MouseEvent.MOUSE_OVER, MouseEvent.MOUSE_OUT, MouseEvent.RELEASE_OUTSIDE])
+			Lib.current.stage.removeEventListener(e, onClicker);
 		/* remove knobs */ for (k in knobs) k.uninit();
 		/* end loop */ Lib.current.stage.removeEventListener(Event.ENTER_FRAME, frame);
 	}
 	
 	public function bslice(ib : BitmapData) /* slice a bitmap into 2x2 smaller bitmaps */
 	{
-		ib = Assets.getBitmapData("img/snowbody/texture.png");
 		var w = ib.width>>1; var h = ib.height>>1;
 		ballbmp = new Bitmap(new BitmapData(w, h, true, 0));
 		headbmp = new Bitmap(new BitmapData(w, h, true, 0));
@@ -437,10 +474,9 @@ class Snowbody implements MulticartGame
 	
 	public function onClicker(event : MouseEvent)
 	{
-		var lock = false; /* don't allow turning more than one knob at a time */
 		for (k in knobs)
 		{
-			if (k.vg) { if (!lock) k.onMouse(event); else k.vg = false; lock = true;  }
+			if (k.vg) { k.onMouse(event); break; }
 		}
 	}
 	
