@@ -27,6 +27,10 @@ class ApplicationMain {
 		var types = [];
 		
 		
+		urls.push ("img/snowbody/texture.png");
+		types.push (AssetType.IMAGE);
+		
+		
 		
 		preloader.load (urls, types);
 		#end

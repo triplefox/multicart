@@ -8,6 +8,7 @@ import com.ludamix.multicart.d.T;
 import com.ludamix.multicart.d.Tuner;
 import haxe.ds.Vector;
 import lime.utils.Float32Array;
+import openfl.Assets;
 import openfl.events.MouseEvent;
 import openfl.geom.ColorTransform;
 import openfl.geom.Matrix;
@@ -25,12 +26,20 @@ import com.ludamix.multicart.d.Vec2F;
 
 	Digital Snowbody Game
 	
-	Task 2. Introduce knobs to scale and skew things
-	
-	Let's make the last thing for tonight be the snowflakes...
-	
-	Task 3. Get away from the perlin noise placeholders somehow (maybe a thing to generate the bitmaps)
 	Task 4. Dump more stuff on (bitmap distort, bg color change, snowflake fx, etc.)
+
+		We need to do some knob layout...
+		...I guess just keep the knob look and feel the same everywhere.
+
+		Categories
+			Parts scaling
+			Coloring options
+			Effects options
+			
+		Current status: body_s and arm_s exist and need a few more parameters(initial magnitudes/offsets), and they need knobs assigned.
+		
+		And then add the color and fx and some buttons to reset things.
+		
 	Task 5. Export functionality...
 	
 */
@@ -40,7 +49,15 @@ typedef Snowpart = { p/*position*/:Vec2F, v/*velocity*/:Vec2F, r/*radians*/:Floa
 	sw/*scale width*/:Float, sh/*scale height*/:Float };
 
 typedef Snowflake = { p/*position*/:Vec2F, r/*radians*/:Float, sw/*scale width*/:Float, sh/*scale height*/:Float };
-	
+
+typedef SpineConfig = { rinc : Float, /* increment r per */ 
+		minc : Float, /* increment m per */ 
+		rsamp : Float, /* cos r amplitude */
+		rsoff : Float, /* cos r offset */ 
+		msamp : Float, /* cos m amplitude */ 
+		msoff : Float /* cos m offset */
+};
+
 class Snowbody implements MulticartGame
 {
 	
@@ -69,12 +86,24 @@ class Snowbody implements MulticartGame
 	
 	public var explosion_damp : Float;
 	
-	public var tunertestv : Float;
-	public var tuner : Tuner;
+	public var tuners : Array<Tuner>;
 	public var knobs : Array<Knob>;
+	
+	public var sfp /*snowfield pattern*/ : {
+		/*tile width and height*/ TW : Float, TH : Float,
+		/*rotation velocity*/ RV : Float,
+		/*flake width and height */ FW : Float, FH : Float,
+		/*group mod depth and frequency */ GM : Float, GF : Float,
+		/*per-flake mod depth */ FX : Float, FY : Float, FS : Float,
+		/*pattern x frequency, depth */ PF : Float, PDX : Float,
+		/*pattern y depth */ PDY : Float
+	};
+	public var body_s /*body spine*/ : SpineConfig;
+	public var arm_s /*arm spine*/ : SpineConfig;
 	
 	/* inputs */
 	public var trigger_explosion : Bool;
+	
 	
 	/* constants */
 	
@@ -157,14 +186,63 @@ class Snowbody implements MulticartGame
 			parts[SPARML] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTARM, sw:0.5, sh:0.5 };
 			parts[SPARMR] = { p:Vec2F.c(0., 0.), v:Vec2F.c(0., 0.), r:0.,rv:0., b:PTARM, sw:0.5, sh:0.5 };
 			for (p in parts) { p.p.x = Math.random() * PW; p.p.y = Math.random() * PH; p.r = Math.random() * Math.PI * 2; }
+			
+			sfp = {/*tile width and height*/ TW : 64, TH : 64,
+			/*rotation velocity*/ RV : 0.02,
+			/*flake width and height */ FW : 0.1, FH : 0.1,
+			/*group mod depth and frequency */ GM : 64, GF : 1/50,
+			/*per-flake mod depth */ FX : 1 / 12, FY : 1 / 8, FS : 2,
+			/*pattern x frequency, depth */ PF : 1 / 128, PDX : 64,
+			/*pattern y depth */ PDY : 0.5
+			};
+			
+			body_s = { rinc : 0., /* increment r per */ 
+					minc : 0., /* increment m per */ 
+					rsamp : 0.5, /* cos r amplitude */
+					rsoff : 1/100, /* cos r offset */ 
+					msamp : 0., /* cos m amplitude */ 
+					msoff : 1/50/* cos m offset */
+			};
+			arm_s = { rinc : 0., /* increment r per */ 
+					minc : 0., /* increment m per */ 
+					rsamp : 0.5, /* cos r amplitude */
+					rsoff : 1/100, /* cos r offset */ 
+					msamp : 0., /* cos m amplitude */ 
+					msoff : 1/50/* cos m offset */
+			};
+			
 		}
 		{ /* special effects parameters */
 			explosion_damp = 0.;
 			
-			tunertestv = 0.;
-			tuner = Tuner.makeFloat(this, "explosion_damp", RangeMapping.pos(0., 1., 0.3, 0.), 0., "Test", "test", true);
-			knobs = [new Knob(128., tuner)];
-			for (k in knobs) clicker.addChild(k);
+			tuners = [Tuner.makeFloat(this, "explosion_damp", RangeMapping.pos(0., 1., 0.3, 0.), 0., "", "", true),
+				Tuner.makeFloat(sfp, "FW", RangeMapping.pos(0.01,1.0,1.,0.1), 0.1, "", "", true),
+				Tuner.makeFloat(sfp, "FH", RangeMapping.pos(0.01,1.0,1.,0.1), 0.1, "", "", true),
+				Tuner.makeFloat(sfp, "FX", RangeMapping.pos(0.001,16.,1/4,1/12), 1/12, "", "", true),
+				Tuner.makeFloat(sfp, "FY", RangeMapping.pos(0.001,16.,1/4,1/8), 1/8, "", "", true),
+				Tuner.makeFloat(sfp, "FS", RangeMapping.neg(-16.,16.,1/4,2.), 2., "", "", true),
+				Tuner.makeFloat(sfp, "GF", RangeMapping.pos(0.001,32.,1/4,64), 64, "", "", true),
+				Tuner.makeFloat(sfp, "GM", RangeMapping.neg(-128,128.,1/4,1/50), 1/50, "", "", true),
+				Tuner.makeFloat(sfp, "TW", RangeMapping.neg(24.,256.,1/4,64), 64, "", "", true),
+				Tuner.makeFloat(sfp, "TH", RangeMapping.neg(24.,256.,1/4,64), 64, "", "", true),
+				Tuner.makeFloat(sfp, "PF", RangeMapping.pos(0.001,32,1/4,1/128), 1/128, "", "", true),
+				Tuner.makeFloat(sfp, "PDX", RangeMapping.pos(0.,128,1/4,64), 64, "", "", true),
+				Tuner.makeFloat(sfp, "PDY", RangeMapping.pos(0., 128, 1 / 4, 0.5), 0.5, "", "", true),
+				Tuner.makeFloat(sfp, "RV", RangeMapping.pos(0., 1., 1 / 4, 0.02), 0.02, "", "", true),
+			];
+			for (sc in [body_s, arm_s])
+			{
+				tuners = tuners.concat([
+					Tuner.makeFloat(sc, "rinc", RangeMapping.neg(-Math.PI*2, Math.PI*2, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(sc, "minc", RangeMapping.neg(-3., 3., 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(sc, "rsamp", RangeMapping.neg(-10, 10., 1/4, 0.5), 0.5, "", "", true),
+					Tuner.makeFloat(sc, "rsoff", RangeMapping.pos(0.0001, 4., 1/4, 1/100), 1/100, "", "", true),
+					Tuner.makeFloat(sc, "msamp", RangeMapping.neg(-10, 10., 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(sc, "msoff", RangeMapping.pos(0.0001, 4., 1/4, 1/50), 1/50, "", "", true),
+				]);
+			}
+			knobs = [for (t in tuners) new Knob(32., t)];
+			for (k in knobs) { clicker.addChild(k); }
 		}
 		{ /* configure input */ this.inp = inp;
 			inp.check(); if (inp.warn_t.length > 0) trace(inp.warn_t);
@@ -220,6 +298,11 @@ class Snowbody implements MulticartGame
 				explosion_damp = 1.;
 			}
 			trigger_explosion = false;
+			{ // layout knobs at stage left and right
+				var lx = 0.; var ly = 0.; var bx = 0.;
+				for (k in knobs) { k.x = lx; k.y = ly; lx += k.width+1; 
+					if (lx + k.width+1 > pfs.x) { ly += k.height+1; if (ly > Lib.current.stage.stageHeight) { bx = pfs.x + pfs.width; } lx = bx; } }
+			}
 			for (k in knobs) { if (!k.vg && k.tuner.refresh()) k.dirty = true; k.render(); }
 		}
 		var ra /*render command array*/ = new Array<Array<Float>>();
@@ -227,12 +310,15 @@ class Snowbody implements MulticartGame
 		{ /* simulate */
 		
 			{ /* generate snowflake pattern */
-				/*tile width and height*/ var TW = 64; var TH = 64;
-				/*rotation velocity*/ var RV = 0.02;
-				/*flake width and height */ var FW = 0.1; var FH = 0.1;
-				/*group mod depth and frequency */ var GM = 64; var GF = 1/50;
-				/*per-flake mod depth */ var FX = 1 / 12; var FY = 1 / 8; var FS = 2;
-				var bx : Float = fe % TW - TW; var by : Float = fe % TH - TH; /* flakes assume a basic tile pattern */
+				/*tile width and height*/ var TW = sfp.TW; var TH = sfp.TH;
+				/*rotation velocity*/ var RV = sfp.RV;
+				/*flake width and height */ var FW = sfp.FW; var FH = sfp.FH;
+				/*group mod depth and frequency */ var GM = sfp.GM; var GF = sfp.GF;
+				/*per-flake mod depth */ var FX = sfp.FX; var FY = sfp.FY; var FS = sfp.FS;
+				/*pattern x frequency, depth */ var PF = sfp.PF; var PDX = sfp.PDX;
+				/*pattern y depth */ var PDY = sfp.PDY;
+			
+				var bx : Float = (Math.sin(fe*PF) * PDX) % TW - TW; var by : Float = (fe * PDY) % TH - TH; /* flakes assume a basic tile pattern */
 				bx = (bx + Math.sin(fe * GF) * GM);
 				var x = bx; var y = by;
 				var r = (fe * RV) % (Math.PI * 2);
@@ -247,12 +333,12 @@ class Snowbody implements MulticartGame
 			var body = new Array<SpineVec>(); body.push({p:Vec2F.c(PW*0.5,PH*0.95),r:-Math.PI/2,m:1.5});
 			
 			/* render and sample spines */
-			renderSpine(body, 128, ba, ra, 0., 0., 0.5, fe/100, 0., fe/50);
+			renderSpine(body, 128, ba, ra, body_s.rinc, body_s.minc, body_s.rsamp, fe*body_s.rsoff, body_s.msamp, fe*body_s.msoff);
 			var samples = [for (i in [0.05, 0.5, 0.95]) T.sample(body, i)];
 			var armr = [perpsv(T.sample(body, 0.5))]; armr[0].m = 0.8;
 			var arml = [{m:armr[0].m,r:armr[0].r+Math.PI,p:armr[0].p.clone()}];
-			renderSpine(armr, 128, ba, ra, 0., 0., 0.1, fe/100, 0., fe/50);
-			renderSpine(arml, 128, ba, ra, 0., 0., 0.1, fe/100, 0., fe/50);
+			renderSpine(armr, 128, ba, ra, arm_s.rinc, arm_s.minc, arm_s.rsamp, fe*arm_s.rsoff, arm_s.msamp, fe*arm_s.msoff);
+			renderSpine(arml, 128, ba, ra, arm_s.rinc, arm_s.minc, arm_s.rsamp, fe*arm_s.rsoff, arm_s.msamp, fe*arm_s.msoff);
 			samples.push(T.sample(armr, 0.8));
 			samples.push(T.sample(arml, 0.8));
 			
@@ -287,8 +373,6 @@ class Snowbody implements MulticartGame
 			
 			explosion_damp = Math.max(0., explosion_damp * 0.99);
 			
-			//ra.push(grc(0, 0.05, 0.05, n.r, n.p.x, n.p.y, 1., 1., 1., 1., 0., 0., 0., 0.));
-			//ra.push(grc(0, sncw, snch, 0., sncx, sncy, 1., 1., 1., 1., 0., 0., 0., 0.));
 		}
 		{ /* render */
 			/* common parameters */
@@ -339,6 +423,7 @@ class Snowbody implements MulticartGame
 	
 	public function bslice(ib : BitmapData) /* slice a bitmap into 2x2 smaller bitmaps */
 	{
+		ib = Assets.getBitmapData("img/snowbody/texture.png");
 		var w = ib.width>>1; var h = ib.height>>1;
 		ballbmp = new Bitmap(new BitmapData(w, h, true, 0));
 		headbmp = new Bitmap(new BitmapData(w, h, true, 0));
@@ -352,9 +437,10 @@ class Snowbody implements MulticartGame
 	
 	public function onClicker(event : MouseEvent)
 	{
+		var lock = false; /* don't allow turning more than one knob at a time */
 		for (k in knobs)
 		{
-			if (k.vg) k.onMouse(event);
+			if (k.vg) { if (!lock) k.onMouse(event); else k.vg = false; lock = true;  }
 		}
 	}
 	
