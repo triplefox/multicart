@@ -36,7 +36,7 @@ class Main extends Sprite
 		inp.kbutton(222,"p1b1"); // '
 		/* quit to menu on "escape" key */
 		Lib.current.stage.addEventListener(KeyboardEvent.KEY_DOWN, function(k : KeyboardEvent) { 
-			if (k.keyCode == 27) startGame(new Menu()); } );
+			if (k.keyCode == 27) startGame(new Snowbody()); } );
 		/* audio */
 		beeper = new Beeper();
 		/* default game */

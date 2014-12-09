@@ -19,7 +19,7 @@ class RangeMapping
 	public inline function r2() { return h2 - l2; }
 	
 	/* conveniences */
-	public static function pos(l, h, c, d) /*positive 0...1 mapping*/ { return new RangeMapping(l,h,0.,1.,c); }
-	public static function neg(l, h, c, d) /*negative -1...1 mapping*/ { return new RangeMapping(l,h,-1.,1.,c); }
+	public static function pos(l, h, c) /*positive 0...1 mapping*/ { return new RangeMapping(l,h,0.,1.,c); }
+	public static function neg(l, h, c) /*negative -1...1 mapping*/ { return new RangeMapping(l,h,-1.,1.,c); }
 	
 }

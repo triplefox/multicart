@@ -4,6 +4,8 @@ import openfl.events.MouseEvent;
 import openfl.events.Event;
 import openfl.Lib;
 
+typedef KnobStyle = { bg:Int, fg:Int, line:Int };
+
 class Knob extends Sprite
 {
 	
@@ -13,6 +15,7 @@ class Knob extends Sprite
 	public var gs /* grab scaling */ : Float;
 	public var radius : Float;
 	public var dirty : Bool;
+	public var color : KnobStyle;
 	
 	private static var _pts : Array<{x:Float,y:Float}>;	
 	
@@ -24,11 +27,12 @@ class Knob extends Sprite
 		_pts = [for (i in 0...ARNG) { x: -Math.sin(i * _amul), y: Math.cos(i * _amul) } ];		
 	}
 	
-	public function new(circumference: Float, tuner : Tuner, ?vf = 0.7, ?vd = 0.001, ?gs = 0.01) { dirty = true;
+	public function new(circumference: Float, tuner : Tuner, ?vf = 0.7, ?vd = 0.001, ?gs = 0.01, 
+		?color : KnobStyle = null) { dirty = true; if (color == null) color = { bg:0xFF222222, fg:0xFFAAAAAA, line:0xFFCCCCCC }; this.color = color;
 		super(); this.radius = circumference / 2; this.vf = vf; this.vd = vd; va = 0.; vv = 0.; vg = false;
 		this.gs = gs;
 		this.tuner = tuner;
-		for (n in [MouseEvent.MOUSE_MOVE, MouseEvent.CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP, MouseEvent.RELEASE_OUTSIDE])
+		for (n in [MouseEvent.MOUSE_MOVE, MouseEvent.CLICK, MouseEvent.RIGHT_CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP, MouseEvent.RELEASE_OUTSIDE])
 			this.addEventListener(n, function(ev) { if (!vg) onMouse(ev); } ); /* allow top level to pass in events when grabbing */
 		if (_pts == null) init();
 		render();
@@ -36,7 +40,7 @@ class Knob extends Sprite
 	
 	public function uninit()
 	{
-		for (n in [MouseEvent.MOUSE_MOVE, MouseEvent.CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP,MouseEvent.RELEASE_OUTSIDE])
+		for (n in [MouseEvent.MOUSE_MOVE, MouseEvent.CLICK, MouseEvent.RIGHT_CLICK, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP,MouseEvent.RELEASE_OUTSIDE])
 			this.removeEventListener(n, onMouse);		
 	}
 	
@@ -53,7 +57,7 @@ class Knob extends Sprite
 			tuner.si(tuner.i + vv);
 		}
 		else { tuner.refresh(); }
-		var g = this.graphics; g.clear(); var bg = 0xFF222222; var fg = 0xFFAAAAAA; g.lineStyle(0, 0xFFCCCCCC);
+		var g = this.graphics; g.clear(); var bg = color.bg; var fg = color.fg; g.lineStyle(0, color.line);
 		
 		{ /* draw the knob */
 			var r = radius; var x = r; var y = x;
@@ -72,6 +76,7 @@ class Knob extends Sprite
 	{
 		if (ev.type == MouseEvent.MOUSE_DOWN) { vg = true; vv = 0.; va = 0.; gx = Lib.current.stage.mouseX; gy = Lib.current.stage.mouseY; }
 		else if (ev.type == MouseEvent.MOUSE_UP) { vg = false; }
+		if (ev.type == MouseEvent.RIGHT_CLICK) { tuner.si(tuner.d); dirty = true; }
 	}
 	
 }

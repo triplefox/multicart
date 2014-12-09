@@ -1,5 +1,6 @@
 package com.ludamix.multicart;
 import com.ludamix.multicart.d.Beeper;
+import com.ludamix.multicart.d.FlashIO;
 import com.ludamix.multicart.d.InputConfig;
 import com.ludamix.multicart.d.Knob;
 import com.ludamix.multicart.d.Proportion;
@@ -26,20 +27,11 @@ import com.ludamix.multicart.d.Vec2F;
 
 	Digital Snowbody Game
 	
-	Task 4. Dump more stuff on (bitmap distort, bg color change, snowflake fx, etc.)
-
-		Categories
-			Effects options	
-			Sample point adjustments
-			Bg adjust
-			
-			Resets for: spines, flakes, colors and scale
-			Import image
-			(do as button inputs?)
-			
-			Colorize knobs by group?
-		
-	Task 5. Export functionality...
+	For Ludum Dare 31
+	
+	Click-drag the knobs to play with the snowman's parameters.
+	Right-click a knob to reset it.
+	There are a few keys which will do other things!
 	
 */
 
@@ -99,6 +91,15 @@ class Snowbody implements MulticartGame
 	};
 	public var body_s /*body spine*/ : SpineConfig;
 	public var arm_s /*arm spine*/ : SpineConfig;
+	public var bgcol /*bg color*/ : {r:Float,g:Float,b:Float};
+	/* sample points and magnitudes for spines */
+	public var samp0 : Float;
+	public var samp1 : Float;
+	public var samp2 : Float;
+	public var samp3 : Float;
+	public var samp4 : Float;
+	public var samp5 : Float;
+	public var mag0 : Float;
 	
 	/* inputs */
 	public var trigger_explosion : Bool;
@@ -142,9 +143,11 @@ class Snowbody implements MulticartGame
 		{ /* init clicker */ clicker = new Sprite(); disp.addChild(clicker); 
 			var g = clicker.graphics; g.beginFill(0, 0.); g.drawRect(0., 0., Lib.current.stage.width, Lib.current.stage.height); g.endFill();
 			clicker.mouseEnabled = true; clicker.mouseChildren = true;
-			for (e in [MouseEvent.CLICK, MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP,
+			for (e in [MouseEvent.CLICK, MouseEvent.RIGHT_CLICK, MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP,
 			MouseEvent.MOUSE_OVER, MouseEvent.MOUSE_OUT, MouseEvent.RELEASE_OUTSIDE])
 				Lib.current.stage.addEventListener(e, onClicker);
+			for (e in [KeyboardEvent.KEY_DOWN])
+				Lib.current.stage.addEventListener(e, onKey);
 		}
 		{ /* init bitmaps */ var b = Assets.getBitmapData("img/snowbody/texture.png"); bslice(b); }
 		{ /* init timers */ fe = 0; ldt = Lib.getTimer(); mdt = 0.; }
@@ -202,66 +205,105 @@ class Snowbody implements MulticartGame
 					ipy : 0.,
 					ir : 0.
 			};
-			flakecolors = {rm:1.,gm:1.,bm:1.,am:1.,ro:0.,go:0.,bo:0.,ao:0.};
+			flakecolors = { rm:1., gm:1., bm:1., am:1., ro:0., go:0., bo:0., ao:0. };
+			bgcol = { r:0.1, g:0.1, b:0.2 };
+			
+			samp0 = 0.05;
+			samp1 = 0.5;
+			samp2 = 0.95;
+			samp3 = 0.5;
+			samp4 = 0.8;
+			samp5 = 0.8;
+			mag0 = 0.8;
+			
 		}
 		{ /* special effects parameters */
 			explosion_damp = 0.;
 			
-			tuners = [Tuner.makeFloat(this, "explosion_damp", RangeMapping.pos(0., 1., 0.3, 0.), 0., "", "", true),
-				Tuner.makeFloat(sfp, "FW", RangeMapping.pos(0.01,1.0,1.,0.1), 0.1, "", "", true),
-				Tuner.makeFloat(sfp, "FH", RangeMapping.pos(0.01,1.0,1.,0.1), 0.1, "", "", true),
-				Tuner.makeFloat(sfp, "FX", RangeMapping.pos(0.001,16.,1/4,1/12), 1/12, "", "", true),
-				Tuner.makeFloat(sfp, "FY", RangeMapping.pos(0.001,16.,1/4,1/8), 1/8, "", "", true),
-				Tuner.makeFloat(sfp, "FS", RangeMapping.neg(-16.,16.,1/4,2.), 2., "", "", true),
-				Tuner.makeFloat(sfp, "GF", RangeMapping.pos(0.001,32.,1/4,64), 64, "", "", true),
-				Tuner.makeFloat(sfp, "GM", RangeMapping.neg(-128,128.,1/4,1/50), 1/50, "", "", true),
-				Tuner.makeFloat(sfp, "TW", RangeMapping.neg(24.,256.,1/4,64), 64, "", "", true),
-				Tuner.makeFloat(sfp, "TH", RangeMapping.neg(24.,256.,1/4,64), 64, "", "", true),
-				Tuner.makeFloat(sfp, "PF", RangeMapping.pos(0.001,32,1/4,1/128), 1/128, "", "", true),
-				Tuner.makeFloat(sfp, "PDX", RangeMapping.pos(0.,128,1/4,64), 64, "", "", true),
-				Tuner.makeFloat(sfp, "PDY", RangeMapping.pos(0., 128, 1 / 4, 0.5), 0.5, "", "", true),
-				Tuner.makeFloat(sfp, "RV", RangeMapping.pos(0., 1., 1 / 4, 0.02), 0.02, "", "", true),
+			/* styles */
+			var ks = {bg:0xFF222222, fg:0xFFAAAAAA, line:0xFFCCCCCC};
+			var ksr = {bg:0xFF221111, fg:0xFFAA5555, line:0xFFCC6A6A};
+			var ksg = {bg:0xFF112211, fg:0xFF55AA55, line:0xFF6ACC6A};
+			var ksb = {bg:0xFF111122, fg:0xFF5555AA, line:0xFF6A6ACC};
+			var ksa = {bg:0xFF000000, fg:0xFF444444, line:0xFF888888};
+			
+			tuners = [Tuner.makeFloat(this, "explosion_damp", RangeMapping.pos(0., 1., 0.3), 0., "", "", true),
+				Tuner.makeFloat(sfp, "FW", RangeMapping.pos(0.01,1.0,1.), 0.1, "", "red", true),
+				Tuner.makeFloat(sfp, "FH", RangeMapping.pos(0.01,1.0,1.), 0.1, "", "red", true),
+				Tuner.makeFloat(sfp, "FX", RangeMapping.pos(0.001,16.,1/4), 1/12, "", "green", true),
+				Tuner.makeFloat(sfp, "FY", RangeMapping.pos(0.001,16.,1/4), 1/8, "", "green", true),
+				Tuner.makeFloat(sfp, "FS", RangeMapping.neg(-16.,16.,1/4), 2., "", "blue", true),
+				Tuner.makeFloat(sfp, "GF", RangeMapping.pos(0.001,32.,1/4), 64, "", "alpha", true),
+				Tuner.makeFloat(sfp, "GM", RangeMapping.neg(-128,128.,1/4), 1/50, "", "alpha", true),
+				Tuner.makeFloat(sfp, "TW", RangeMapping.neg(24.,256.,1/4), 64, "", "", true),
+				Tuner.makeFloat(sfp, "TH", RangeMapping.neg(24.,256.,1/4), 64, "", "", true),
+				Tuner.makeFloat(sfp, "PF", RangeMapping.pos(0.001,32,1/4), 1/128, "", "red", true),
+				Tuner.makeFloat(sfp, "PDX", RangeMapping.pos(0.,128,1/4), 64, "", "green", true),
+				Tuner.makeFloat(sfp, "PDY", RangeMapping.pos(0., 128, 1 / 4), 0.5, "", "green", true),
+				Tuner.makeFloat(sfp, "RV", RangeMapping.pos(0., 1., 1 / 4), 0.02, "", "blue", true),
+				Tuner.makeFloat(this, "samp0", RangeMapping.pos(0., 1., 1.), samp0, "", "alpha", true),
+				Tuner.makeFloat(this, "samp1", RangeMapping.pos(0., 1., 1.), samp1, "", "alpha", true),
+				Tuner.makeFloat(this, "samp2", RangeMapping.pos(0., 1., 1.), samp2, "", "alpha", true),
+				Tuner.makeFloat(this, "samp3", RangeMapping.pos(0., 1., 1.), samp3, "", "alpha", true),
+				Tuner.makeFloat(this, "samp4", RangeMapping.pos(0., 1., 1.), samp4, "", "alpha", true),
+				Tuner.makeFloat(this, "samp5", RangeMapping.pos(0., 1., 1.), samp5, "", "alpha", true),
+				Tuner.makeFloat(this, "mag0", RangeMapping.pos(0., 5., 1.), mag0, "", "green", true),
 			];
 			for (a in [body_s, arm_s])
 			{
 				tuners = tuners.concat([
-					Tuner.makeFloat(a, "rinc", RangeMapping.neg(-Math.PI*2, Math.PI*2, 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(a, "minc", RangeMapping.neg(-3., 3., 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(a, "rsamp", RangeMapping.neg(-10, 10., 1/4, 0.5), 0.5, "", "", true),
-					Tuner.makeFloat(a, "rsoff", RangeMapping.pos(0.0001, 4., 1/4, 1/100), 1/100, "", "", true),
-					Tuner.makeFloat(a, "msamp", RangeMapping.neg(-10, 10., 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(a, "msoff", RangeMapping.pos(0.0001, 4., 1/4, 1/50), 1/50, "", "", true),
-					Tuner.makeFloat(a, "ipx", RangeMapping.neg(-256, 256, 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(a, "ipy", RangeMapping.neg(-256, 256, 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(a, "ir", RangeMapping.neg(-Math.PI, Math.PI, 1., 0.), 0., "", "", true),
+					Tuner.makeFloat(a, "rinc", RangeMapping.neg(-Math.PI*2, Math.PI*2, 1/4), 0., "", "", true),
+					Tuner.makeFloat(a, "minc", RangeMapping.neg(-3., 3., 1/4), 0., "", "", true),
+					Tuner.makeFloat(a, "rsamp", RangeMapping.neg(-10, 10., 1/4), 0.5, "", "red", true),
+					Tuner.makeFloat(a, "rsoff", RangeMapping.pos(0.0001, 4., 1/4), 1/100, "", "alpha", true),
+					Tuner.makeFloat(a, "msamp", RangeMapping.neg(-10, 10., 1/4), 0., "", "green", true),
+					Tuner.makeFloat(a, "msoff", RangeMapping.pos(0.0001, 4., 1/4), 1/50, "", "alpha", true),
+					Tuner.makeFloat(a, "ipx", RangeMapping.neg(-256, 256, 1/4), 0., "", "", true),
+					Tuner.makeFloat(a, "ipy", RangeMapping.neg(-256, 256, 1/4), 0., "", "", true),
+					Tuner.makeFloat(a, "ir", RangeMapping.neg(-Math.PI, Math.PI, 1.), 0., "", "blue", true),
 				]);
 			}
 			for (a in parts)
 			{
 				tuners = tuners.concat([
-					Tuner.makeFloat(a, "sw", RangeMapping.pos(0.001, 8, 1/4, 1.), 1., "", "", true),
-					Tuner.makeFloat(a, "sh", RangeMapping.pos(0.001, 8, 1/4, 1.), 1., "", "", true),
-					Tuner.makeFloat(a.col, "rm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
-					Tuner.makeFloat(a.col, "gm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
-					Tuner.makeFloat(a.col, "bm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
-					Tuner.makeFloat(a.col, "am", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
-					Tuner.makeFloat(a.col, "ro", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(a.col, "go", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(a.col, "bo", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(a.col, "ao", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
+					Tuner.makeFloat(a, "sw", RangeMapping.pos(0.001, 8, 1/4), 1., "", "", true),
+					Tuner.makeFloat(a, "sh", RangeMapping.pos(0.001, 8, 1/4), 1., "", "", true),
+					Tuner.makeFloat(a.col, "rm", RangeMapping.pos(0., 1., 1/4), 1., "", "red", true),
+					Tuner.makeFloat(a.col, "gm", RangeMapping.pos(0., 1., 1/4), 1., "", "green", true),
+					Tuner.makeFloat(a.col, "bm", RangeMapping.pos(0., 1., 1/4), 1., "", "blue", true),
+					Tuner.makeFloat(a.col, "am", RangeMapping.pos(0., 1., 1/4), 1., "", "alpha", true),
+					Tuner.makeFloat(a.col, "ro", RangeMapping.neg(-5, 5, 1/4), 0., "", "red", true),
+					Tuner.makeFloat(a.col, "go", RangeMapping.neg(-5, 5, 1/4), 0., "", "green", true),
+					Tuner.makeFloat(a.col, "bo", RangeMapping.neg(-5, 5, 1/4), 0., "", "blue", true),
+					Tuner.makeFloat(a.col, "ao", RangeMapping.neg(-1, 1, 2.), 0., "", "alpha", true),
 				]);
 			}
 			tuners = tuners.concat([
-					Tuner.makeFloat(flakecolors, "rm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
-					Tuner.makeFloat(flakecolors, "gm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
-					Tuner.makeFloat(flakecolors, "bm", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
-					Tuner.makeFloat(flakecolors, "am", RangeMapping.pos(0., 1., 1/4, 1.), 1., "", "", true),
-					Tuner.makeFloat(flakecolors, "ro", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(flakecolors, "go", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(flakecolors, "bo", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),
-					Tuner.makeFloat(flakecolors, "ao", RangeMapping.neg(-5, 5, 1/4, 0.), 0., "", "", true),			
+					Tuner.makeFloat(flakecolors, "rm", RangeMapping.pos(0., 1., 1/4), 1., "", "red", true),
+					Tuner.makeFloat(flakecolors, "gm", RangeMapping.pos(0., 1., 1/4), 1., "", "green", true),
+					Tuner.makeFloat(flakecolors, "bm", RangeMapping.pos(0., 1., 1/4), 1., "", "blue", true),
+					Tuner.makeFloat(flakecolors, "am", RangeMapping.pos(0., 1., 1/4), 1., "", "alpha", true),
+					Tuner.makeFloat(flakecolors, "ro", RangeMapping.neg(-5, 5, 1/4), 0., "", "red", true),
+					Tuner.makeFloat(flakecolors, "go", RangeMapping.neg(-5, 5, 1/4), 0., "", "green", true),
+					Tuner.makeFloat(flakecolors, "bo", RangeMapping.neg(-5, 5, 1/4), 0., "", "blue", true),
+					Tuner.makeFloat(flakecolors, "ao", RangeMapping.neg(-1, 1, 2.), 0., "", "alpha", true),			
+					Tuner.makeFloat(bgcol, "r", RangeMapping.pos(0., 1., 1 / 4), 0., "", "red", true),
+					Tuner.makeFloat(bgcol, "g", RangeMapping.pos(0., 1., 1 / 4), 0., "", "green", true),
+					Tuner.makeFloat(bgcol, "b", RangeMapping.pos(0., 1., 1 / 4), 0., "", "blue", true)
 			]);
-			knobs = [for (t in tuners) new Knob(32., t)];
+			var ca : Array<Array<Dynamic>> = [];
+			for (t in tuners) /* map color names to styles */
+			{
+				switch(t.n)
+				{
+					case "red": ca.push([t, ksr]);
+					case "green": ca.push([t, ksg]);
+					case "blue": ca.push([t, ksb]);
+					case "alpha": ca.push([t, ksa]);
+					default: ca.push([t, ks]);
+				}
+			}
+			knobs = [for (t in ca) new Knob(32., t[0], 0.7, 0.001, 0.01, t[1])];
 			for (k in knobs) { clicker.addChild(k); }
 		}
 		{ /* configure input */ this.inp = inp;
@@ -269,7 +311,7 @@ class Snowbody implements MulticartGame
 			inp.tbool(this, "trigger_explosion", false, 'p0b0tap', 'Explode');
 			inp.tbool(this, "draw_debug", false, 'p0b1hold', 'Draw Debug Infos');
 		}
-		{ /* start loop */ Lib.current.stage.addEventListener(Event.ENTER_FRAME, frame); }
+		{ /* start loop */ Lib.current.stage.addEventListener(Event.ENTER_FRAME, frame); frame(null); }
 	}
 	
 	private inline function grc /*generate render command*/(bi : Int, xs : Float, ys : Float, r : Float, xt : Float, yt : Float,
@@ -369,15 +411,15 @@ class Snowbody implements MulticartGame
 			/* render and sample spines */
 			renderSpine(body, 128, ba, ra, body_s.rinc, body_s.minc, body_s.rsamp, fe * body_s.rsoff, body_s.msamp, fe * body_s.msoff,
 				body_s.ipx, body_s.ipy, body_s.ir);
-			var samples = [for (i in [0.05, 0.5, 0.95]) T.sample(body, i)];
-			var armr = [perpsv(T.sample(body, 0.5))]; armr[0].m = 0.8;
+			var samples = [for (i in [samp0, samp1, samp2]) T.sample(body, i)];
+			var armr = [perpsv(T.sample(body, samp3))]; armr[0].m = mag0;
 			var arml = [{m:armr[0].m,r:armr[0].r+Math.PI,p:armr[0].p.clone()}];
 			renderSpine(armr, 128, ba, ra, arm_s.rinc, arm_s.minc, arm_s.rsamp, fe * arm_s.rsoff, arm_s.msamp, fe * arm_s.msoff,
 				arm_s.ipx, arm_s.ipy, arm_s.ir);
 			renderSpine(arml, 128, ba, ra, arm_s.rinc, arm_s.minc, arm_s.rsamp, fe * arm_s.rsoff, arm_s.msamp, fe * arm_s.msoff,
 				-arm_s.ipx, -arm_s.ipy, -arm_s.ir);
-			samples.push(T.sample(armr, 0.8));
-			samples.push(T.sample(arml, 0.8));
+			samples.push(T.sample(armr, samp4));
+			samples.push(T.sample(arml, samp5));
 			
 			{ /* physics sim for body parts */
 				var i = 0;
@@ -414,7 +456,7 @@ class Snowbody implements MulticartGame
 		{ /* render */
 			/* common parameters */
 			var bg = 0xFF222222;
-			{ /* draw the background and position the playfield */
+			{ /* draw the background and position the playfield */	
 				var sw = Lib.current.stage.stageWidth; var sh = Lib.current.stage.stageHeight;
 				var g = disp.graphics; g.clear(); 
 				g.lineStyle(0, 0, 0); g.beginFill(bg); g.drawRect(0., 0., sw, sh); g.endFill();
@@ -425,7 +467,9 @@ class Snowbody implements MulticartGame
 			}
 			{ /* draw the playfield */
 				pfs.bitmapData.lock();
-				pfs.bitmapData.fillRect(pfs.bitmapData.rect, 0xFF000000);
+				//trace(Math.round(bgcol.r * 0xFF));
+				pfs.bitmapData.fillRect(pfs.bitmapData.rect, 0xFF000000 + 
+					(Math.round(bgcol.r * 0xFF) << 16) + (Math.round(bgcol.g * 0xFF) << 8) + (Math.round(bgcol.b * 0xFF)));
 				var m = new Matrix();
 				for (n in ra) /* draw scaled, rotozoomed, colored bitmaps */
 				{
@@ -452,9 +496,11 @@ class Snowbody implements MulticartGame
 	public function exit()
 	{
 		/* remove display */ Lib.current.stage.removeChild(disp);
-		/* remove clicker */ for (e in [MouseEvent.CLICK, MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP,
+		/* remove clicker */ for (e in [MouseEvent.CLICK, MouseEvent.RIGHT_CLICK, MouseEvent.MOUSE_MOVE, MouseEvent.MOUSE_DOWN, MouseEvent.MOUSE_UP,
 			MouseEvent.MOUSE_OVER, MouseEvent.MOUSE_OUT, MouseEvent.RELEASE_OUTSIDE])
 			Lib.current.stage.removeEventListener(e, onClicker);
+		/* remove key events */ for (e in [KeyboardEvent.KEY_DOWN])
+				Lib.current.stage.removeEventListener(e, onKey);
 		/* remove knobs */ for (k in knobs) k.uninit();
 		/* end loop */ Lib.current.stage.removeEventListener(Event.ENTER_FRAME, frame);
 	}
@@ -477,6 +523,16 @@ class Snowbody implements MulticartGame
 		for (k in knobs)
 		{
 			if (k.vg) { k.onMouse(event); break; }
+		}
+	}
+	
+	public function onKey(event : KeyboardEvent)
+	{
+		if (event.keyCode == 8)
+		{
+			FlashIO.loadImage(event, function(b : Bitmap) {
+				bslice(b.bitmapData);
+			});
 		}
 	}
 	
