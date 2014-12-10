@@ -227,20 +227,20 @@ class Snowbody implements MulticartGame
 			var ksb = {bg:0xFF111122, fg:0xFF5555AA, line:0xFF6A6ACC};
 			var ksa = {bg:0xFF000000, fg:0xFF444444, line:0xFF888888};
 			
-			tuners = [Tuner.makeFloat(this, "explosion_damp", RangeMapping.pos(0., 1., 0.3), 0., "", "", true),
-				Tuner.makeFloat(sfp, "FW", RangeMapping.pos(0.01,1.0,1.), 0.1, "", "red", true),
-				Tuner.makeFloat(sfp, "FH", RangeMapping.pos(0.01,1.0,1.), 0.1, "", "red", true),
-				Tuner.makeFloat(sfp, "FX", RangeMapping.pos(0.001,16.,1/4), 1/12, "", "green", true),
-				Tuner.makeFloat(sfp, "FY", RangeMapping.pos(0.001,16.,1/4), 1/8, "", "green", true),
-				Tuner.makeFloat(sfp, "FS", RangeMapping.neg(-16.,16.,1/4), 2., "", "blue", true),
-				Tuner.makeFloat(sfp, "GF", RangeMapping.pos(0.001,32.,1/4), 64, "", "alpha", true),
-				Tuner.makeFloat(sfp, "GM", RangeMapping.neg(-128,128.,1/4), 1/50, "", "alpha", true),
-				Tuner.makeFloat(sfp, "TW", RangeMapping.neg(24.,256.,1/4), 64, "", "", true),
-				Tuner.makeFloat(sfp, "TH", RangeMapping.neg(24.,256.,1/4), 64, "", "", true),
-				Tuner.makeFloat(sfp, "PF", RangeMapping.pos(0.001,32,1/4), 1/128, "", "red", true),
-				Tuner.makeFloat(sfp, "PDX", RangeMapping.pos(0.,128,1/4), 64, "", "green", true),
-				Tuner.makeFloat(sfp, "PDY", RangeMapping.pos(0., 128, 1 / 4), 0.5, "", "green", true),
-				Tuner.makeFloat(sfp, "RV", RangeMapping.pos(0., 1., 1 / 4), 0.02, "", "blue", true),
+			tuners = [Tuner.makeFloat(this, "explosion_damp", RangeMapping.pos(0., 1., 0.3), explosion_damp, "", "", true),
+				Tuner.makeFloat(sfp, "FW", RangeMapping.pos(0.01,1.0,1.), sfp.FW, "", "red", true),
+				Tuner.makeFloat(sfp, "FH", RangeMapping.pos(0.01,1.0,1.), sfp.FH, "", "red", true),
+				Tuner.makeFloat(sfp, "FX", RangeMapping.pos(0.001,16.,1/4), sfp.FX, "", "green", true),
+				Tuner.makeFloat(sfp, "FY", RangeMapping.pos(0.001,16.,1/4), sfp.FY, "", "green", true),
+				Tuner.makeFloat(sfp, "FS", RangeMapping.neg(-16.,16.,1/4), sfp.FS, "", "blue", true),
+				Tuner.makeFloat(sfp, "GF", RangeMapping.pos(0.001,32.,1/4), sfp.GF, "", "alpha", true),
+				Tuner.makeFloat(sfp, "GM", RangeMapping.neg(-128,128.,1/4), sfp.GM, "", "alpha", true),
+				Tuner.makeFloat(sfp, "TW", RangeMapping.neg(24.,256.,1/4), sfp.TW, "", "", true),
+				Tuner.makeFloat(sfp, "TH", RangeMapping.neg(24.,256.,1/4), sfp.TH, "", "", true),
+				Tuner.makeFloat(sfp, "PF", RangeMapping.pos(0.001,32,1/4), sfp.PF, "", "red", true),
+				Tuner.makeFloat(sfp, "PDX", RangeMapping.pos(0.,128,1/4), sfp.PDX, "", "green", true),
+				Tuner.makeFloat(sfp, "PDY", RangeMapping.pos(0., 128, 1 / 4), sfp.PDY, "", "green", true),
+				Tuner.makeFloat(sfp, "RV", RangeMapping.pos(0., 1., 1 / 4), sfp.RV, "", "blue", true),
 				Tuner.makeFloat(this, "samp0", RangeMapping.pos(0., 1., 1.), samp0, "", "alpha", true),
 				Tuner.makeFloat(this, "samp1", RangeMapping.pos(0., 1., 1.), samp1, "", "alpha", true),
 				Tuner.makeFloat(this, "samp2", RangeMapping.pos(0., 1., 1.), samp2, "", "alpha", true),
@@ -252,44 +252,44 @@ class Snowbody implements MulticartGame
 			for (a in [body_s, arm_s])
 			{
 				tuners = tuners.concat([
-					Tuner.makeFloat(a, "rinc", RangeMapping.neg(-Math.PI*2, Math.PI*2, 1/4), 0., "", "", true),
-					Tuner.makeFloat(a, "minc", RangeMapping.neg(-3., 3., 1/4), 0., "", "", true),
-					Tuner.makeFloat(a, "rsamp", RangeMapping.neg(-10, 10., 1/4), 0.5, "", "red", true),
-					Tuner.makeFloat(a, "rsoff", RangeMapping.pos(0.0001, 4., 1/4), 1/100, "", "alpha", true),
-					Tuner.makeFloat(a, "msamp", RangeMapping.neg(-10, 10., 1/4), 0., "", "green", true),
-					Tuner.makeFloat(a, "msoff", RangeMapping.pos(0.0001, 4., 1/4), 1/50, "", "alpha", true),
-					Tuner.makeFloat(a, "ipx", RangeMapping.neg(-256, 256, 1/4), 0., "", "", true),
-					Tuner.makeFloat(a, "ipy", RangeMapping.neg(-256, 256, 1/4), 0., "", "", true),
-					Tuner.makeFloat(a, "ir", RangeMapping.neg(-Math.PI, Math.PI, 1.), 0., "", "blue", true),
+					Tuner.makeFloat(a, "rinc", RangeMapping.neg(-Math.PI*2, Math.PI*2, 1/4), a.rinc, "", "", true),
+					Tuner.makeFloat(a, "minc", RangeMapping.neg(-3., 3., 1/4), a.minc, "", "", true),
+					Tuner.makeFloat(a, "rsamp", RangeMapping.neg(-10, 10., 1/4), a.rsamp, "", "red", true),
+					Tuner.makeFloat(a, "rsoff", RangeMapping.pos(0.0001, 4., 1/4), a.rsoff, "", "alpha", true),
+					Tuner.makeFloat(a, "msamp", RangeMapping.neg(-10, 10., 1/4), a.msamp, "", "green", true),
+					Tuner.makeFloat(a, "msoff", RangeMapping.pos(0.0001, 4., 1/4), a.msoff, "", "alpha", true),
+					Tuner.makeFloat(a, "ipx", RangeMapping.neg(-256, 256, 1/4), a.ipx, "", "", true),
+					Tuner.makeFloat(a, "ipy", RangeMapping.neg(-256, 256, 1/4), a.ipy, "", "", true),
+					Tuner.makeFloat(a, "ir", RangeMapping.neg(-Math.PI, Math.PI, 1.), a.ir, "", "blue", true),
 				]);
 			}
 			for (a in parts)
 			{
 				tuners = tuners.concat([
-					Tuner.makeFloat(a, "sw", RangeMapping.pos(0.001, 8, 1/4), 1., "", "", true),
-					Tuner.makeFloat(a, "sh", RangeMapping.pos(0.001, 8, 1/4), 1., "", "", true),
-					Tuner.makeFloat(a.col, "rm", RangeMapping.pos(0., 1., 1/4), 1., "", "red", true),
-					Tuner.makeFloat(a.col, "gm", RangeMapping.pos(0., 1., 1/4), 1., "", "green", true),
-					Tuner.makeFloat(a.col, "bm", RangeMapping.pos(0., 1., 1/4), 1., "", "blue", true),
-					Tuner.makeFloat(a.col, "am", RangeMapping.pos(0., 1., 1/4), 1., "", "alpha", true),
-					Tuner.makeFloat(a.col, "ro", RangeMapping.neg(-5, 5, 1/4), 0., "", "red", true),
-					Tuner.makeFloat(a.col, "go", RangeMapping.neg(-5, 5, 1/4), 0., "", "green", true),
-					Tuner.makeFloat(a.col, "bo", RangeMapping.neg(-5, 5, 1/4), 0., "", "blue", true),
-					Tuner.makeFloat(a.col, "ao", RangeMapping.neg(-1, 1, 2.), 0., "", "alpha", true),
+					Tuner.makeFloat(a, "sw", RangeMapping.pos(0.001, 8, 1/4), a.sw, "", "", true),
+					Tuner.makeFloat(a, "sh", RangeMapping.pos(0.001, 8, 1/4), a.sh, "", "", true),
+					Tuner.makeFloat(a.col, "rm", RangeMapping.pos(0., 1., 1/4), a.col.rm, "", "red", true),
+					Tuner.makeFloat(a.col, "gm", RangeMapping.pos(0., 1., 1/4), a.col.gm, "", "green", true),
+					Tuner.makeFloat(a.col, "bm", RangeMapping.pos(0., 1., 1/4), a.col.bm, "", "blue", true),
+					Tuner.makeFloat(a.col, "am", RangeMapping.pos(0., 1., 1/4), a.col.am, "", "alpha", true),
+					Tuner.makeFloat(a.col, "ro", RangeMapping.neg(-5, 5, 1/4), a.col.ro, "", "red", true),
+					Tuner.makeFloat(a.col, "go", RangeMapping.neg(-5, 5, 1/4), a.col.go, "", "green", true),
+					Tuner.makeFloat(a.col, "bo", RangeMapping.neg(-5, 5, 1/4), a.col.bo, "", "blue", true),
+					Tuner.makeFloat(a.col, "ao", RangeMapping.neg(-1, 1, 2.), a.col.ao, "", "alpha", true),
 				]);
 			}
 			tuners = tuners.concat([
-					Tuner.makeFloat(flakecolors, "rm", RangeMapping.pos(0., 1., 1/4), 1., "", "red", true),
-					Tuner.makeFloat(flakecolors, "gm", RangeMapping.pos(0., 1., 1/4), 1., "", "green", true),
-					Tuner.makeFloat(flakecolors, "bm", RangeMapping.pos(0., 1., 1/4), 1., "", "blue", true),
-					Tuner.makeFloat(flakecolors, "am", RangeMapping.pos(0., 1., 1/4), 1., "", "alpha", true),
-					Tuner.makeFloat(flakecolors, "ro", RangeMapping.neg(-5, 5, 1/4), 0., "", "red", true),
-					Tuner.makeFloat(flakecolors, "go", RangeMapping.neg(-5, 5, 1/4), 0., "", "green", true),
-					Tuner.makeFloat(flakecolors, "bo", RangeMapping.neg(-5, 5, 1/4), 0., "", "blue", true),
-					Tuner.makeFloat(flakecolors, "ao", RangeMapping.neg(-1, 1, 2.), 0., "", "alpha", true),			
-					Tuner.makeFloat(bgcol, "r", RangeMapping.pos(0., 1., 1 / 4), 0., "", "red", true),
-					Tuner.makeFloat(bgcol, "g", RangeMapping.pos(0., 1., 1 / 4), 0., "", "green", true),
-					Tuner.makeFloat(bgcol, "b", RangeMapping.pos(0., 1., 1 / 4), 0., "", "blue", true)
+					Tuner.makeFloat(flakecolors, "rm", RangeMapping.pos(0., 1., 1/4), flakecolors.rm, "", "red", true),
+					Tuner.makeFloat(flakecolors, "gm", RangeMapping.pos(0., 1., 1/4), flakecolors.gm, "", "green", true),
+					Tuner.makeFloat(flakecolors, "bm", RangeMapping.pos(0., 1., 1/4), flakecolors.bm, "", "blue", true),
+					Tuner.makeFloat(flakecolors, "am", RangeMapping.pos(0., 1., 1/4), flakecolors.am, "", "alpha", true),
+					Tuner.makeFloat(flakecolors, "ro", RangeMapping.neg(-5, 5, 1/4), flakecolors.ro, "", "red", true),
+					Tuner.makeFloat(flakecolors, "go", RangeMapping.neg(-5, 5, 1/4), flakecolors.go, "", "green", true),
+					Tuner.makeFloat(flakecolors, "bo", RangeMapping.neg(-5, 5, 1/4), flakecolors.bo, "", "blue", true),
+					Tuner.makeFloat(flakecolors, "ao", RangeMapping.neg(-1, 1, 2.), flakecolors.ao, "", "alpha", true),			
+					Tuner.makeFloat(bgcol, "r", RangeMapping.pos(0., 1., 1 / 4), bgcol.r, "", "red", true),
+					Tuner.makeFloat(bgcol, "g", RangeMapping.pos(0., 1., 1 / 4), bgcol.g, "", "green", true),
+					Tuner.makeFloat(bgcol, "b", RangeMapping.pos(0., 1., 1 / 4), bgcol.b, "", "blue", true)
 			]);
 			var ca : Array<Array<Dynamic>> = [];
 			for (t in tuners) /* map color names to styles */
@@ -303,7 +303,7 @@ class Snowbody implements MulticartGame
 					default: ca.push([t, ks]);
 				}
 			}
-			knobs = [for (t in ca) new Knob(32., t[0], 0.7, 0.001, 0.01, t[1])];
+			knobs = [for (t in ca) new Knob(32., t[0], 0.7, 0.0005, 0.006, t[1])];
 			for (k in knobs) { clicker.addChild(k); }
 		}
 		{ /* configure input */ this.inp = inp;

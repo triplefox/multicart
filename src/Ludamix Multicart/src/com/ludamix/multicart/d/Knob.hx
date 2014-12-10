@@ -10,7 +10,7 @@ class Knob extends Sprite
 {
 	
 	public var tuner : Tuner;
-	public var vg /* grabbed==true? */ : Bool; public var gx /* grab x */ : Float; public var gy /* grab y */ : Float;
+	public var vg /* grabbed==true? */ : Bool; public var gy /* grab y */ : Float;
 	public var va /* value acceleration */ : Float; public var vv /* velocity */ : Float; public var vf /* friction */ : Float; public var vd /* deadzone */: Float;
 	public var gs /* grab scaling */ : Float;
 	public var radius : Float;
@@ -27,7 +27,7 @@ class Knob extends Sprite
 		_pts = [for (i in 0...ARNG) { x: -Math.sin(i * _amul), y: Math.cos(i * _amul) } ];		
 	}
 	
-	public function new(circumference: Float, tuner : Tuner, ?vf = 0.7, ?vd = 0.001, ?gs = 0.01, 
+	public function new(circumference: Float, tuner : Tuner, ?vf = 0.7, ?vd = 0.0005, ?gs = 0.006, 
 		?color : KnobStyle = null) { dirty = true; if (color == null) color = { bg:0xFF222222, fg:0xFFAAAAAA, line:0xFFCCCCCC }; this.color = color;
 		super(); this.radius = circumference / 2; this.vf = vf; this.vd = vd; va = 0.; vv = 0.; vg = false;
 		this.gs = gs;
@@ -50,8 +50,7 @@ class Knob extends Sprite
 		if (vg)  /* update grab, accelerate the knob */
 		{
 			var lx = Lib.current.stage.mouseX; var ly = Lib.current.stage.mouseY;
-			va = dist(gx, lx, gy, ly); var dx = lx - gx; var dy = ly - gy; if (dx-dy < 0) va = -va;
-			gx = lx; gy = ly;
+			va = gy - ly; gy = ly;
 			/* accelerate */
 			vv += va * gs; va = 0.; vv *= vf; if (Math.abs(vv) < vd) vv = 0.;
 			tuner.si(tuner.i + vv);
@@ -70,13 +69,11 @@ class Knob extends Sprite
 		
 	}
 	
-	public function dist(a0 : Float,a1 : Float,b0 : Float,b1 : Float) { var a2 = (a0 - a1); var b2 = (b0 - b1); return (Math.sqrt(a2 * a2 + b2 * b2)); }
-	
 	public function onMouse(ev : MouseEvent)
 	{
-		if (ev.type == MouseEvent.MOUSE_DOWN) { vg = true; vv = 0.; va = 0.; gx = Lib.current.stage.mouseX; gy = Lib.current.stage.mouseY; }
+		if (ev.type == MouseEvent.MOUSE_DOWN) { vg = true; vv = 0.; va = 0.; gy = Lib.current.stage.mouseY; }
 		else if (ev.type == MouseEvent.MOUSE_UP) { vg = false; }
-		if (ev.type == MouseEvent.RIGHT_CLICK) { tuner.si(tuner.d); dirty = true; }
+		if (ev.type == MouseEvent.RIGHT_CLICK) { tuner.so(tuner.d); dirty = true; }
 	}
 	
 }
