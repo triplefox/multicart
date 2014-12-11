@@ -369,11 +369,11 @@ class Snowbody implements MulticartGame
 			}
 			trigger_explosion = false;
 			{ // layout knobs at stage left and right
-				var lx = 0.; var ly = 0.; var bx = 0.; var wlim = pfs.x;
+				var bx = 8.; var wlim = pfs.x; var lx = bx; var ly = 8.; 
 				for (k in knobs) { k.x = lx; k.y = ly; lx += k.width+1; 
 					if (lx + k.width + 1 > wlim) { 
 						ly += k.height + 1; 
-						if (ly + k.height + 1 > Lib.current.stage.stageHeight) { bx = pfs.x + pfs.width; ly = 0; wlim = Lib.current.stage.stageWidth; } 
+						if (ly + k.height + 1 > Lib.current.stage.stageHeight) { bx = pfs.x + pfs.width + 8; ly = 8; wlim = Lib.current.stage.stageWidth; } 
 						lx = bx; } 
 					}
 			}
@@ -467,7 +467,6 @@ class Snowbody implements MulticartGame
 			}
 			{ /* draw the playfield */
 				pfs.bitmapData.lock();
-				//trace(Math.round(bgcol.r * 0xFF));
 				pfs.bitmapData.fillRect(pfs.bitmapData.rect, 0xFF000000 + 
 					(Math.round(bgcol.r * 0xFF) << 16) + (Math.round(bgcol.g * 0xFF) << 8) + (Math.round(bgcol.b * 0xFF)));
 				var m = new Matrix();
@@ -489,7 +488,7 @@ class Snowbody implements MulticartGame
 		{ /* end tick */
 			/* increment frame */ fe+= 1; 
 			/* update dt counts */ var dt = Lib.getTimer(); mdt = mdt * 0.9 + (dt - ldt) * 0.1; ldt = dt; 
-			disp.graphics.beginFill(0xFF000000, 1.); disp.graphics.drawRect(0., 0., 2., mdt * 25); disp.graphics.endFill(); 
+			disp.graphics.beginFill(0xFF008888, 1.); disp.graphics.drawRect(0., 0., 2., mdt * 25); disp.graphics.endFill(); 
 		}
 	}
 	
