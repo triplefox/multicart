@@ -3,6 +3,8 @@ package com.ludamix.multicart.d;
 class T /*toolbox*/
 {
 	
+	public static inline var TAU = 6.28318530718;
+	
 	public static inline function lerp(r0 : Float, r1 : Float, z : Float) { return (r0 + (r1 - r0) * z); }
 	
 	public static inline function lscale(l0 : Float, h0 : Float, l1 : Float, h1 : Float, z0 : Float) : Float
@@ -34,7 +36,7 @@ class T /*toolbox*/
 		}
 	}
 	public static inline function diffRad /* nearest difference in radians */ (r0 : Float, r1 : Float) {
-		return rdiff(r0, r1, Math.PI * 2);
+		return rdiff(r0, r1, TAU);
 	}	
 	public static inline function diffDeg /* nearest difference in degrees */ (r0 : Float, r1 : Float) {
 		return rdiff(r0, r1, 360.);
@@ -46,11 +48,15 @@ class T /*toolbox*/
 	}
 	
 	public static inline function lerpRad /* interpolate in radians between [0,tau) */ (r0 : Float, r1 : Float, z : Float) {
-		return rlerp(r0, r1, Math.PI * 2, z);
+		return rlerp(r0, r1, TAU, z);
 	}	
 	public static inline function lerpDeg /* interpolate in degrees between [0,360) */ (r0 : Float, r1 : Float, z : Float) {
 		return rlerp(r0, r1, 360., z);
 	}
+	
+	/* radian/degree angle conversions */
+	public static inline function rad2deg(r : Float) : Float { return (r / (TAU)) * 360; }
+	public static inline function deg2rad(d : Float) : Float { return (d / 360) * (TAU); }
 	
 	public static inline function sample<T>(a : Array<T>, z : Float) /*nearest interpolation of z on a in [0,1]*/ { return a[Math.round(z * (a.length-1))]; }
 	public static inline function lsample<T>(a : Array<Float>, z : Float) /*linear interpolation of z on a in [0,1)*/

@@ -40,7 +40,7 @@ class Main extends Sprite
 		/* audio */
 		beeper = new Beeper();
 		/* default game */
-		startGame(new Snowbody());
+		startGame(new Spacewar());
 	}
 
 	public function new() { 
