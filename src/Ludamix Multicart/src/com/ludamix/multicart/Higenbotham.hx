@@ -65,13 +65,13 @@ class Higenbotham implements MulticartGame
 		{ /* init ball */ ball = { p:Vec2F.c(PW * 0.8, PH * 0.5), v:Vec2F.c(0., 0.), s:ServeR }; }
 		{ /* init players */ angleL = 0.; angleR = -Math.PI; hitL = false; hitR = false; vecL = Vec2F.c(1, 0); vecR = Vec2F.c( -1, 0); }
 		{ /* configure input */ this.inp = inp;
-			inp.tfloat(ball.v, "x", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "t0", "Ball X Vel", false);
-			inp.tfloat(ball.v, "y", RangeMapping.neg( -10, 10, 0.4, 0.), 0., "t1", "Ball Y Vel", false);
-			inp.tfloat(this, "angleL", RangeMapping.neg( -Math.PI / 2 + 0.03, Math.PI / 2 - 0.03, 1., 0.), 0., "p0horiz", "Player 1 Angle", true);
-			inp.tfloat(this, "angleR", RangeMapping.neg( -Math.PI * 3 / 2 + 0.03, -Math.PI / 2 - 0.03, 1., 0.), 0., "p1horiz", "Player 2 Angle", true);
+			inp.tfloat(ball.v, "x", RangeMapping.neg( -10, 10, 0.4), 0., "t0", "Ball X Vel", false);
+			inp.tfloat(ball.v, "y", RangeMapping.neg( -10, 10, 0.4), 0., "t1", "Ball Y Vel", false);
+			inp.tfloat(this, "angleL", RangeMapping.neg( -Math.PI / 2 + 0.03, Math.PI / 2 - 0.03, 1.), 0., "p0horiz", "Player 1 Angle", true);
+			inp.tfloat(this, "angleR", RangeMapping.neg( -Math.PI * 3 / 2 + 0.03, -Math.PI / 2 - 0.03, 1.), 0., "p1horiz", "Player 2 Angle", true);
 			inp.tbool(this, "hitL", false, "p0b0tap", "Player 1 Hit Ball");
 			inp.tbool(this, "hitR", false, "p1b0tap", "Player 2 Hit Ball");
-			inp.check(); if (inp.warn_t.length > 0) trace(inp.warn_t);
+			inp.check(); if (inp.warn_t.length > 0) Main.error.s(inp.warn_t);
 		}
 		{ /* start audio */ Main.beeper.start(); 
 			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440.]), Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 220.])];

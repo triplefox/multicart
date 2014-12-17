@@ -27,6 +27,10 @@ class ApplicationMain {
 		var types = [];
 		
 		
+		urls.push ("img/atascii.png");
+		types.push (AssetType.IMAGE);
+		
+		
 		urls.push ("img/snowbody/texture.png");
 		types.push (AssetType.IMAGE);
 		

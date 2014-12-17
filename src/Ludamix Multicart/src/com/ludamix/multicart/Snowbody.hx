@@ -307,7 +307,7 @@ class Snowbody implements MulticartGame
 			for (k in knobs) { clicker.addChild(k); }
 		}
 		{ /* configure input */ this.inp = inp;
-			inp.check(); if (inp.warn_t.length > 0) trace(inp.warn_t);
+			inp.check(); if (inp.warn_t.length > 0) Main.error.s(inp.warn_t);
 			inp.tbool(this, "trigger_explosion", false, 'p0b0tap', 'Explode');
 			inp.tbool(this, "draw_debug", false, 'p0b1hold', 'Draw Debug Infos');
 		}

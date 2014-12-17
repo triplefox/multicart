@@ -44,6 +44,8 @@ class DefaultAssetLibrary extends AssetLibrary {
 		
 		#if flash
 		
+		className.set ("img/atascii.png", __ASSET__img_atascii_png);
+		type.set ("img/atascii.png", AssetType.IMAGE);
 		className.set ("img/snowbody/texture.png", __ASSET__img_snowbody_texture_png);
 		type.set ("img/snowbody/texture.png", AssetType.IMAGE);
 		
@@ -51,6 +53,10 @@ class DefaultAssetLibrary extends AssetLibrary {
 		#elseif html5
 		
 		var id;
+		id = "img/atascii.png";
+		path.set (id, id);
+		
+		type.set (id, AssetType.IMAGE);
 		id = "img/snowbody/texture.png";
 		path.set (id, id);
 		
@@ -63,11 +69,15 @@ class DefaultAssetLibrary extends AssetLibrary {
 		
 		
 		
+		
 		#end
 		
 		#if (windows || mac || linux)
 		
 		/*var useManifest = false;
+		
+		className.set ("img/atascii.png", __ASSET__img_atascii_png);
+		type.set ("img/atascii.png", AssetType.IMAGE);
 		
 		className.set ("img/snowbody/texture.png", __ASSET__img_snowbody_texture_png);
 		type.set ("img/snowbody/texture.png", AssetType.IMAGE);
@@ -643,12 +653,14 @@ class DefaultAssetLibrary extends AssetLibrary {
 #if !display
 #if flash
 
+@:keep @:bind #if display private #end class __ASSET__img_atascii_png extends flash.display.BitmapData { public function new () { super (0, 0, true, 0); } }
 @:keep @:bind #if display private #end class __ASSET__img_snowbody_texture_png extends flash.display.BitmapData { public function new () { super (0, 0, true, 0); } }
 
 
 #elseif html5
 
 #if openfl
+
 
 
 #end
@@ -662,6 +674,7 @@ class DefaultAssetLibrary extends AssetLibrary {
 #if (windows || mac || linux)
 
 //
+//@:bitmap("assets/img/atascii.png") class __ASSET__img_atascii_png extends openfl.display.BitmapData {}
 //@:bitmap("assets/img/snowbody/texture.png") class __ASSET__img_snowbody_texture_png extends openfl.display.BitmapData {}
 //
 //

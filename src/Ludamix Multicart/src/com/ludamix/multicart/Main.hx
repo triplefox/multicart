@@ -1,11 +1,14 @@
 package com.ludamix.multicart;
 
 import com.ludamix.multicart.d.Beeper;
+import com.ludamix.multicart.d.FlashIO;
 import flash.display.Sprite;
 import flash.events.Event;
 import flash.Lib;
 import openfl.events.KeyboardEvent;
 import com.ludamix.multicart.d.InputConfig;
+import openfl.text.TextField;
+import openfl.text.TextFieldAutoSize;
 
 /**
  * ...
@@ -16,6 +19,8 @@ class Main extends Sprite
 {
 	function init() 
 	{
+		/* set up errors */
+		error = new ErrorBox(); Lib.current.stage.addChild(error);
 		/* set up devices */
 		inp = new InputConfig(); 
 		Lib.current.stage.addEventListener(KeyboardEvent.KEY_DOWN, inp.onKeyDown);
@@ -36,11 +41,11 @@ class Main extends Sprite
 		inp.kbutton(222,"p1b1"); // '
 		/* quit to menu on "escape" key */
 		Lib.current.stage.addEventListener(KeyboardEvent.KEY_DOWN, function(k : KeyboardEvent) { 
-			if (k.keyCode == 27) startGame(new Snowbody()); } );
+			if (k.keyCode == 27) startGame(MENUGAME()); } );
 		/* audio */
 		beeper = new Beeper();
 		/* default game */
-		startGame(new Spacewar());
+		startGame(DEFAULTGAME());
 	}
 
 	public function new() { 
@@ -63,10 +68,34 @@ class Main extends Sprite
 	public static var game:Dynamic;
 	public static var inp:InputConfig;
 	public static var beeper:Beeper;
+	public static var error:ErrorBox;
+	
+	private static function MENUGAME() { return new Menu(); }
+	private static function DEFAULTGAME() { return new Menu(); }
 	
 	public static function startGame(newgame : Dynamic)
 	{
 		if (game != null) {game.exit();} inp.resetTuners(); game = newgame; game.start(inp);
 	}
 	
+}
+
+class ErrorBox extends Sprite
+{
+	public var tx : TextField;
+	public var timer : Int;
+	public function new()
+	{
+		super();
+		tx = new TextField();
+		tx.autoSize = TextFieldAutoSize.LEFT;
+		this.addChild(tx);
+		tx.text = "errors";
+		tx.textColor = 0xFFFFFFFF;
+		timer = -1;
+		flash.Lib.current.stage.addEventListener(Event.ENTER_FRAME, update);
+	}
+	public function update(?event : Event) { tx.visible = (Lib.getTimer() < timer);
+		this.parent.setChildIndex(this, this.parent.numChildren-1); }
+	public function s(t : Array<String>) { tx.text = t.join("\n"); timer = Lib.getTimer() + 5000; }
 }

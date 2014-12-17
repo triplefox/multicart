@@ -1,7 +1,7 @@
 package com.ludamix.multicart.d;
 class Proportion
 {
-	public static inline function bestfit(w0, h0, w1, h1)
+	public static inline function bestfit(w0 : Float, h0 : Float, w1 : Float, h1 : Float)
 	/* find the best scale for a rectangle of width w0, h0 trying to fit in w1, h1*/
 	{
 		var sc0 = (w0 > h0) ? h0 : w0;
