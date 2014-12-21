@@ -59,8 +59,8 @@ class T /*toolbox*/
 	public static inline function deg2rad(d : Float) : Float { return (d / 360) * (TAU); }
 	
 	public static inline function sample<T>(a : Array<T>, z : Float) /*nearest interpolation of z on a in [0,1]*/ { return a[Math.round(z * (a.length-1))]; }
-	public static inline function lsample<T>(a : Array<Float>, z : Float) /*linear interpolation of z on a in [0,1)*/
-	{ var k = z * (a.length - 1); var i = Std.int(k); return lerp(a[i], a[i + 1], k - i); }
+	public static inline function lsample<T>(a : Array<Float>, z : Float) /*linear interpolation of z on a in [0,1]*/
+	{ var k = z * (a.length - 1); var i = Std.int(k); (i>=a.length-1) ? return a[i] : return lerp(a[i], a[i + 1], k - i); }
 	
 	public static inline function trunc /* truncate float to the amount rounded by the divisor */ (a : Float, div : Float) { return Math.round(a * div) / div; }
 	

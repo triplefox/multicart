@@ -22,6 +22,10 @@ class Vec2F
 	{ x = a.x + (b.x - a.x) * z; y = a.y + (b.y - a.y) * z; }
 	public inline function diff(a : Vec2F, b : Vec2F, z : Float) 
 	{ x = (b.x - a.x) * z; y = (b.y - a.y) * z; }
+	public static inline function distSqr(a : Vec2F, b : Vec2F) 
+	{ var d0 = (a.x - b.x); var d1 = (a.y - b.y); return d0 * d0 + d1 * d1; }	
+	public static inline function dist(a : Vec2F, b : Vec2F) 
+	{ return Math.sqrt(distSqr(a, b)); }	
 	
 	public function toString() { return '(x ${Math.round(x*1000)/1000}, y ${Math.round(y*1000)/1000})'; }
 	

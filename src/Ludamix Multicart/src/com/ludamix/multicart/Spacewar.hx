@@ -28,6 +28,9 @@ import com.ludamix.multicart.d.Vec2F;
 
 */
 
+typedef Particle = { v /*velocity*/ :Vec2F, p /*position*/ :Vec2F, x0 /*extrusions*/ :Point, x1:Point, a /*angle*/ : Float, 
+		av /*angle velocity*/ : Float, l /*lifetime*/ : Int };
+
 class Spacewar implements MulticartGame
 {
 	
@@ -39,21 +42,22 @@ class Spacewar implements MulticartGame
 	public var players : Array<{ v /*velocity*/ :Vec2F, p /*position*/ :Vec2F, a /*angle*/ : Float, av /*angle velocity*/ : Float, o /*owner*/ : Int, l /*alive*/ : Bool}>;
 	public var projectiles : Array<{ v /*velocity*/ :Vec2F, p /*position*/ :Vec2F, l /*alive*/ : Bool, o /*owner*/ : Int}>;
 	public var controls : Array<{ f /*fire*/ :Bool, t /*thrust*/ :Bool, l /*left*/ :Bool, r /*right*/ :Bool, h /*hyperspace*/ :Bool }>;	
-	public var beep_gain : Vector<Float>; /* beeper gain */
+	public var beep_gain : Array<Vector<Float>>; /* beeper gain */
 	public var beep_freq : Array<Vector<Float>>; /* beeper freq */
 	public var plsprbase : Array<Array<Array<Array<Float>>>>; /* player sprite source data */
-	public var particles : Array < { v /*velocity*/ :Vec2F, p /*position*/ :Vec2F, x0 /*extrusions*/ :Point, x1:Point, a /*angle*/ : Float, 
-		av /*angle velocity*/ : Float, l /*lifetime*/ : Int}>;
+	public var particles : Array <Particle>;
 	public static inline var PW /* playfield width */ = 200;
 	public static inline var PH /* playfield height */ = 200;
 	public static inline var PSCALE /* player scale */ = 10;
 	public static inline var GRAVITY /* added to players each frame towards center of playfield(sun) */ = 0.1;
 	public static inline var P0X /* player 0 init x */ = PW * 0.2;
 	public static inline var P0Y /* player 0 init y */ = PH * 0.2;
-	public static inline var P0A /* player 0 init angle */ = 0;
+	public static inline var P0A /* player 0 init angle */ = T.deg2rad(45);
 	public static inline var P1X /* player 1 init x */ = PW * 0.8;
 	public static inline var P1Y /* player 1 init y */ = PH * 0.8;
-	public static inline var P1A /* player 1 init angle */ = 0;
+	public static inline var P1A /* player 1 init angle */ = T.deg2rad(-135);
+	
+	public static inline var PCOLLISION /* player collision circle */ = PSCALE * 0.9;
 	
 	public static inline var ROTAC /* rotation acceleration */ = 0.01;
 	public static inline var ROTF /* rotation friction */ = 0.8;
@@ -66,10 +70,7 @@ class Spacewar implements MulticartGame
 	{
 		{ /* init display */ disp = new Sprite(); Lib.current.stage.addChild(disp); }
 		{ /* init playfield */ pfs = new Sprite(); disp.addChild(pfs); }
-		{ /* init projectiles */ projectiles = [for (i in 0...100) {v:Vec2F.c(0.,0.), p:Vec2F.c(0.,0.), l:false, o:-1}]; }
-		{ /* init particles */ particles = []; }
-		{ /* init players */ players = [ { v:Vec2F.c(0., 0.), p:Vec2F.c(P0X, P0Y), a:P0A, av:0., o:0, l:true },
-										 { v:Vec2F.c(0., 0.), p:Vec2F.c(P1X, P1Y), a:P1A, av:0., o:1, l:true } ]; }
+		resetRound();
 		{ /* init player sprites - stored as runs of connected segments with the tip of the nose at 1,0 */
 			plsprbase = [
 				/*p0*/
@@ -91,13 +92,28 @@ class Spacewar implements MulticartGame
 			inp.check(); if (inp.warn_t.length > 0) Main.error.s(inp.warn_t);
 		}
 		{ /* start audio */ Main.beeper.start(); 
-			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440.]), Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 220.])];
-			beep_gain = Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) if (i < Beeper.CK_SIZE / 4) 1. -i / (Beeper.CK_SIZE / 4) else 0.]); 
+			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 330 - i / Beeper.CK_SIZE * 220.]), 
+						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440 - i / Beeper.CK_SIZE * 330.]),
+						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) Math.random() * 22050]),
+						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) Math.random() * 440])];
+			beep_gain = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) if (i < Beeper.CK_SIZE / 4) 1. -i / (Beeper.CK_SIZE / 4) else 0.]),
+						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 1. - (i / (Beeper.CK_SIZE)) / 2]),
+						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 0.5 - (i / (Beeper.CK_SIZE)) / 2])
+						]; 
 		}
 		{ /* start loop */ Lib.current.stage.addEventListener(Event.ENTER_FRAME, frame); }
 	}
 	
-	public function hitSound(idx : Int) { Main.beeper.qg = [beep_gain]; Main.beeper.qf = [beep_freq[idx]]; }
+	public function resetRound()
+	{
+		{ /* init projectiles */ projectiles = [for (i in 0...100) {v:Vec2F.c(0.,0.), p:Vec2F.c(0.,0.), l:false, o:-1}]; }
+		{ /* init particles */ particles = []; }
+		{ /* init players */ players = [ { v:Vec2F.c(0., 0.), p:Vec2F.c(P0X, P0Y), a:P0A, av:0., o:0, l:true },
+										 { v:Vec2F.c(0., 0.), p:Vec2F.c(P1X, P1Y), a:P1A, av:0., o:1, l:true } ]; }		
+	}
+	
+	public function shootSound(idx : Int) { Main.beeper.qg = [beep_gain[0]]; Main.beeper.qf = [beep_freq[idx]]; }
+	public function hitSound() { Main.beeper.qg = [beep_gain[1],beep_gain[2]]; Main.beeper.qf = [beep_freq[2],beep_freq[3]]; }
 	
 	public function oob(v : Vec2F) /*(0,PW],(0,PH]*/ { return v.x < 0 || v.y < 0 || v.x >= PW || v.y >= PH; }
 	
@@ -109,29 +125,23 @@ class Spacewar implements MulticartGame
 			for (i in 0...controls.length)
 			{
 				var p = players[i];
-				/* player rotations */
-				if (controls[i].l) { p.av -= ROTAC; }
-				if (controls[i].r) { p.av += ROTAC; }
-				/* add angular velocity and friction */ p.a += p.av; p.av *= ROTF;
-				if (controls[i].t) { var tv /*thrust vec*/ = new Vec2F(); tv.ofRadmul(p.a, THRUSTM); p.v.addf(tv); }
-				if (controls[i].f) { 
-					for (j in projectiles) { if (!j.l) { 
-						j.l = true; j.o = p.o; j.p.setf(p.p); j.v.setf(p.v);
-						var sv /*shoot vec*/ = new Vec2F(); sv.ofRadmul(p.a, SHOOTM); j.v.addf(sv);
-						break; }}
-				}
-				if (controls[i].h) {
-					for (v in plsprbase[p.o])
-					{
-					/* spawn explosion particles - we take the original gfx and make each segment a particle */ 
-						for(z in 0...v.length-1) { 
-							var i = v[z]; var j = v[z+1];
-							/* spawn the extrusion */ var r = { v:Vec2F.c(0., 0.), p:p.p.clone(), 
-								x0:new Point(i[0], i[1]), x1:new Point(j[0], j[1]),
-								a:p.a, av:p.av, l:EXPLODEF };
-							particles.push(r);
-						}
-					}		
+				if (p.l)
+				{
+					/* player rotations */
+					if (controls[i].l) { p.av -= ROTAC; }
+					if (controls[i].r) { p.av += ROTAC; }
+					/* add angular velocity and friction */ p.a += p.av; p.av *= ROTF;
+					if (controls[i].t) { var tv /*thrust vec*/ = new Vec2F(); tv.ofRadmul(p.a, THRUSTM); p.v.addf(tv); }
+					if (controls[i].f) { 
+						shootSound(p.o);
+						for (j in projectiles) { if (!j.l) { 
+							j.l = true; j.o = p.o; j.p.setf(p.p); j.v.setf(p.v);
+							var sv /*shoot vec*/ = new Vec2F(); sv.ofRadmul(p.a, SHOOTM); j.v.addf(sv); 
+							sv.ofRadmul(p.a, PSCALE); j.p.addf(sv);
+							break; }}
+					}
+					if (controls[i].h) {
+					}
 				}
 				controls[i].f = false;
 				controls[i].h = false;
@@ -141,7 +151,41 @@ class Spacewar implements MulticartGame
 			var c = 0;  for (p in projectiles) { if (p.l) { c += 1;  p.p.addf(p.v); if (oob(p.p)) p.l = false; } }
 			/* update particles (count backwards to despawn cleanly) */
 			{ var i = particles.length - 1; while (i >= 0) { var p = particles[i]; p.l -= 1;
+				p.a += p.av; p.p.addf(p.v);
 				/*despawn*/ if (p.l <= 0) { particles.splice(i, 1); } i -= 1; } }
+			/* collide */
+			{
+				for (j in projectiles)
+				{
+					if (j.l)
+					{
+						for (l in players)
+						{
+							if (j.o != l.o && l.l)
+							{
+								if (Vec2F.distSqr(j.p, l.p) < PCOLLISION * PCOLLISION)
+								{
+									l.l = false;
+									hitSound();
+									for (shp in plsprbase[l.o])
+									{
+										/* spawn explosion particles - we take the original gfx and make each segment a particle */ 
+										for(z in 0...shp.length-1) { 
+											var i = shp[z]; var j = shp[z + 1];
+											var rndv = Vec2F.c((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 2);
+											rndv.addf(l.v);
+											var rndav = (Math.random() - 0.5)*0.1 + l.av;
+											/* spawn the segment */ particles.push({ v:rndv, p:l.p.clone(), 
+												x0:new Point(i[0], i[1]), x1:new Point(j[0], j[1]),
+												a:l.a, av:rndav, l:EXPLODEF } );
+										}
+									}									
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 		{ /* render */
 			/* common parameters */
@@ -180,6 +224,17 @@ class Spacewar implements MulticartGame
 						}
 					}
 				}				
+			}
+		}
+		{ /* update game state */
+			var livecount = 0;
+			for (p in players)
+			{
+				if (p.l) livecount++;
+			}
+			if (livecount <= 1 && particles.length <= 0)
+			{
+				resetRound();
 			}
 		}
 	}
