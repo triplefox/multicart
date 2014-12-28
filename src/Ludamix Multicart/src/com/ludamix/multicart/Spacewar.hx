@@ -92,11 +92,11 @@ class Spacewar implements MulticartGame
 			inp.check(); if (inp.warn_t.length > 0) Main.error.s(inp.warn_t);
 		}
 		{ /* start audio */ Main.beeper.start(); 
-			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 330 - i / Beeper.CK_SIZE * 220.]), 
-						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440 - i / Beeper.CK_SIZE * 330.]),
-						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) Math.random() * 22050]),
-						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) Math.random() * 440])];
-			beep_gain = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) if (i < Beeper.CK_SIZE / 4) 1. -i / (Beeper.CK_SIZE / 4) else 0.]),
+			beep_freq = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 880 - i / Beeper.CK_SIZE * 879.]), 
+						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 440 - i / Beeper.CK_SIZE * 439.]),
+						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) Math.random() * 220]),
+						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) Math.random() * 20])];
+			beep_gain = [Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 1. - (i / (Beeper.CK_SIZE))]),
 						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 1. - (i / (Beeper.CK_SIZE)) / 2]),
 						 Vector.fromArrayCopy([for (i in 0...Beeper.CK_SIZE) 0.5 - (i / (Beeper.CK_SIZE)) / 2])
 						]; 
