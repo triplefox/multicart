@@ -31,7 +31,8 @@ class Menu implements MulticartGame
 		cat = [
 			{name:"Spacewar!", desc:"1961 two-player space combat.", game:function(){ return new Spacewar();} },
 			{name:"Digital Snowbody", desc:"For LD31. Turn the knobs to make your own snowman.", game:function(){ return new Snowbody();}},
-			{name:"Higenbotham", desc:"1958 Tennis for Two game", game:function(){ return new Higenbotham();} }
+			{name:"Higenbotham", desc:"1958 Tennis for Two game", game:function(){ return new Higenbotham();} },
+			{name:"Kong", desc:"The original multiscreen platformer", game:function(){ return new Kong();} }
 		];
 		surf = new Bitmap(new BitmapData(300, 192, false, 0));
 		ts = new Tileset(Assets.getBitmapData("img/atascii.png"), 8, 8); /* Atari ATASCII set */

@@ -56,6 +56,7 @@ class Spacewar implements MulticartGame
 	public static inline var P1X /* player 1 init x */ = PW * 0.8;
 	public static inline var P1Y /* player 1 init y */ = PH * 0.8;
 	public static inline var P1A /* player 1 init angle */ = T.deg2rad(-135);
+	public static inline var OOB /* out of bounds range */ = 200.;
 	
 	public static inline var PCOLLISION /* player collision circle */ = PSCALE * 0.9;
 	
@@ -115,7 +116,7 @@ class Spacewar implements MulticartGame
 	public function shootSound(idx : Int) { Main.beeper.qg = [beep_gain[0]]; Main.beeper.qf = [beep_freq[idx]]; }
 	public function hitSound() { Main.beeper.qg = [beep_gain[1],beep_gain[2]]; Main.beeper.qf = [beep_freq[2],beep_freq[3]]; }
 	
-	public function oob(v : Vec2F) /*(0,PW],(0,PH]*/ { return v.x < 0 || v.y < 0 || v.x >= PW || v.y >= PH; }
+	public function oob(v : Vec2F, z : Float) /*(-z,z+PW],(-z,z+PH]*/ { return v.x < -z || v.y < -z || v.x >= z+PW || v.y >= z+PH; }
 	
 	public function frame(ev : Event)
 	{
@@ -148,7 +149,7 @@ class Spacewar implements MulticartGame
 				/* add positional velocity */ p.p.addf(p.v);
 			}
 			/* update projectiles (we just turn them off instead of despawning) */
-			var c = 0;  for (p in projectiles) { if (p.l) { c += 1;  p.p.addf(p.v); if (oob(p.p)) p.l = false; } }
+			var c = 0;  for (p in projectiles) { if (p.l) { c += 1;  p.p.addf(p.v); if (oob(p.p, OOB)) p.l = false; } }
 			/* update particles (count backwards to despawn cleanly) */
 			{ var i = particles.length - 1; while (i >= 0) { var p = particles[i]; p.l -= 1;
 				p.a += p.av; p.p.addf(p.v);
@@ -232,9 +233,18 @@ class Spacewar implements MulticartGame
 			{
 				if (p.l) livecount++;
 			}
+			/* dead? */
 			if (livecount <= 1 && particles.length <= 0)
 			{
 				resetRound();
+			}
+			/* out of bounds? */
+			{
+				for (p in players) {
+					if (oob(p.p, OOB)) {
+						resetRound();
+					}
+				}
 			}
 		}
 	}
